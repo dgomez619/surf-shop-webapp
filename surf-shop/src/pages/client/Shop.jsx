@@ -46,7 +46,7 @@ export default function Shop() {
         {/* Header */}
         <div className="mb-8 md:mb-12">
           <h1 className="font-display text-4xl md:text-6xl lg:text-8xl uppercase leading-[0.85]">
-            The <span className="text-surf-accent">Stash</span>
+            The <span className="text-surf-accent">Stash room</span>
           </h1>
           <p className="text-gray-400 mt-2 md:mt-4 max-w-md text-sm md:text-base">
             Curated hardgoods and softgoods for the La Jolla reef breaks. Verified by locals.
