@@ -20,29 +20,27 @@ export default function Shop() {
     : products.filter(p => p.category === selectedCategory)
 
   return (
-    <div className="w-full overflow-x-hidden bg-surf-black text-white font-body bg-noise min-h-screen">
-
-      {/* 🔥 FIXED — Marquee always fits inside viewport */}
-    <div className="w-full bg-surf-accent text-black overflow-hidden py-2 border-b border-black">
-  <div className="flex gap-8 items-center animate-scroll font-mono font-bold text-sm tracking-widest uppercase whitespace-nowrap">
-    {/* Duplicate content for seamless loop */}
-    {[...Array(2)].map((_, i) => (
-      <div key={i} className="flex gap-8 items-center">
-        <span>Free Wax with every board purchase</span>
-        <span>•</span>
-        <span>Members get 20% off apparel</span>
-        <span>•</span>
-        <span>Local Delivery to La Jolla & PB</span>
-        <span>•</span>
-        <span>New "Storm" Collection out now</span>
-        <span>•</span>
+    <>
+      {/* Marquee Banner - Full width */}
+      <div className="w-screen relative left-1/2 right-1/2 -mx-[50vw] bg-surf-accent text-black overflow-hidden py-2 border-b border-black">
+        <div className="flex gap-8 items-center animate-scroll font-mono font-bold text-sm tracking-widest uppercase whitespace-nowrap">
+          {[...Array(2)].map((_, i) => (
+            <div key={i} className="flex gap-8 items-center">
+              <span>Free Wax with every board purchase</span>
+              <span>•</span>
+              <span>Members get 20% off apparel</span>
+              <span>•</span>
+              <span>Local Delivery to La Jolla & PB</span>
+              <span>•</span>
+              <span>New "Storm" Collection out now</span>
+              <span>•</span>
+            </div>
+          ))}
+        </div>
       </div>
-    ))}
-  </div>
-</div>
 
-      <main className="w-full max-w-[1600px] mx-auto px-4 py-8">
-
+      {/* Main Content - Constrained width */}
+      <div className="px-4">
         {/* Header */}
         <div className="mb-8 md:mb-12">
           <h1 className="font-display text-4xl md:text-6xl lg:text-8xl uppercase leading-[0.85]">
@@ -53,59 +51,69 @@ export default function Shop() {
           </p>
         </div>
 
-        {/* 🔥 FIXED — Pills always full width, scrollable, no overflow */}
-        <div className="w-full overflow-x-auto hide-scrollbar mb-8 md:mb-12">
-  <div className="flex gap-2 min-w-max pb-2">  {/* Changed w-max to min-w-max */}
-    {categories.map(cat => (
-      <button
-        key={cat}
-        onClick={() => setSelectedCategory(cat)}
-        className={`px-4 md:px-6 py-2 rounded-full font-bold uppercase text-xs md:text-sm whitespace-nowrap transition-colors border flex-shrink-0 ${  // Added flex-shrink-0
-          selectedCategory === cat
-            ? 'bg-white text-black border-white'
-            : 'bg-transparent hover:bg-white/10 text-gray-300 hover:text-white border-white/20'
-        }`}
-      >
-        {cat}
-      </button>
-    ))}
-  </div>
-</div>
+        {/* Category Pills - Scrollable */}
+        <div className="w-full overflow-x-auto hide-scrollbar mb-6 md:mb-8">
+          <div className="flex gap-2 min-w-max pb-2">
+            {categories.map(cat => (
+              <button
+                key={cat}
+                onClick={() => setSelectedCategory(cat)}
+                className={`px-4 md:px-6 py-2 rounded-full font-bold uppercase text-xs md:text-sm whitespace-nowrap transition-colors border shrink-0 ${
+                  selectedCategory === cat
+                    ? 'bg-white text-black border-white'
+                    : 'bg-transparent hover:bg-white/10 text-gray-300 hover:text-white border-white/20'
+                }`}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+        </div>
 
-        {/* 🔥 FIXED — Mobile ALWAYS 1 column, no overflow, tighter padding */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 lg:gap-8">
-
+        {/* Product Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2 md:gap-4 lg:gap-6 w-full">
           {filteredProducts.map((product, index) => {
             const productCard = (
               <div
                 key={product.id}
                 className={`group col-span-1 ${product.type === 'board' ? 'lg:row-span-2' : ''}`}
               >
-                
-                {/* 🔥 FIXED — all card aspect ratios + mobile sizing */}
-              <div
-  className={`relative rounded-xl overflow-hidden border border-white/5 ${product.color}
-    ${product.type === 'board'
-      ? 'aspect-[2/3] md:aspect-[3/5] lg:aspect-[4/5]'  // Wider on mobile
-      : product.type === 'accessory'
-      ? 'aspect-square'
-      : 'aspect-[4/5] md:aspect-[3/4]' }  // Wider on mobile
-    bg-surf-card w-full`}
->
-
+                {/* Card Container */}
+                <div
+                  className={`relative rounded-xl overflow-hidden border border-white/5 ${product.color}
+                    ${product.type === 'board'
+                      ? 'aspect-[2/3.5] md:aspect-3/4 lg:aspect-4/5'
+                      : product.type === 'accessory'
+                      ? 'aspect-square'
+                      : 'aspect-[3/4.5] md:aspect-3/4 lg:aspect-3/4'
+                    } bg-surf-card w-full`}
+                >
                   {/* Background */}
                   <div className="absolute inset-0 bg-gray-800" />
 
-                  {/* Product Placeholder */}
+                  {/* Product Icon */}
                   <div className="absolute inset-0 flex items-center justify-center text-gray-600 z-10">
                     {product.type === 'board'
                       ? <div className="w-12 md:w-16 h-[70%] bg-gray-300 rounded-full opacity-20"></div>
-                      : <i className={`ph-fill ${product.icon} text-5xl md:text-6xl`}></i>}
+                      : <i className={`ph-fill ${product.icon} text-5xl md:text-6xl`}></i>
+                    }
                   </div>
+
+                  {/* Badge */}
+                  {product.badge && (
+                    <div className="absolute top-2 left-2 bg-surf-accent text-black text-[10px] font-bold px-2 py-1 uppercase rounded-sm z-30">
+                      {product.badge}
+                    </div>
+                  )}
+
+                  {/* Add to Cart Button - Positioned above specs */}
+                  <button className="absolute bottom-12 right-3 bg-white text-black w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 translate-y-3 group-hover:translate-y-0 transition-all duration-300 z-20">
+                    <i className="ph-bold ph-plus"></i>
+                  </button>
 
                   {/* Board Specs Overlay */}
                   {product.specs && (
-                    <div className="absolute bottom-0 left-0 right-0 p-3 md:p-4 bg-black/60 backdrop-blur-sm border-t border-white/10 translate-y-full group-hover:translate-y-0 transition-all text-[10px] font-mono">
+                    <div className="absolute bottom-0 left-0 right-0 p-3 md:p-4 bg-black/60 backdrop-blur-sm border-t border-white/10 translate-y-full group-hover:translate-y-0 transition-all text-[10px] font-mono z-10">
                       <div className="grid grid-cols-3 gap-2 text-center text-gray-300">
                         {Object.entries(product.specs).map(([key, val]) => (
                           <div key={key}>
@@ -116,22 +124,9 @@ export default function Shop() {
                       </div>
                     </div>
                   )}
-
-                  {/* Badge */}
-                  {product.badge && (
-                    <div className="absolute top-2 left-2 bg-surf-accent text-black text-[10px] font-bold px-2 py-1 uppercase rounded-sm z-20">
-                      {product.badge}
-                    </div>
-                  )}
-
-                  {/* Add-to-cart */}
-                  <button className="absolute bottom-3 right-3 bg-white text-black w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 translate-y-3 group-hover:translate-y-0 transition-all duration-300">
-                    <i className="ph-bold ph-plus"></i>
-                  </button>
-
                 </div>
 
-                {/* Info */}
+                {/* Product Info */}
                 <div className="mt-2 space-y-1">
                   <h3 className="font-bold text-sm md:text-lg truncate group-hover:text-surf-accent">
                     {product.name}
@@ -150,24 +145,24 @@ export default function Shop() {
               </div>
             )
 
-            // Ad-break
+            // Insert ad break after 3rd product
             if (index === 2 && selectedCategory === 'All') {
               return (
-                <div key={`wrap-${index}`} className="w-full">
+                <div key={`group-${index}`} className="contents">
                   {productCard}
 
-                  {/* 🔥 FIXED — Ad break no longer breaks grid or overflows */}
-                  <div className="col-span-1 md:col-span-2 lg:col-span-2 lg:row-span-2 aspect-video md:aspect-[16/7] relative rounded-xl overflow-hidden group mt-4">
+                  {/* Society Ad Break */}
+                  <div className="col-span-1 md:col-span-2 lg:col-span-2 lg:row-span-2 aspect-video md:aspect-16/7 relative rounded-xl overflow-hidden group">
                     <img
                       src="https://images.unsplash.com/photo-1520116468816-95b69f847357?q=80&w=2574&auto=format&fit=crop"
                       className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:scale-105 transition-transform duration-700"
                       alt="The Society"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black to-transparent"></div>
-                    <div className="absolute bottom-6 left-6 max-w-xs">
-                      <span className="text-surf-accent font-bold text-xs uppercase tracking-widest mb-2 block">The Society</span>
-                      <h3 className="font-display text-2xl md:text-3xl uppercase mb-4 leading-none">Ride this board for $25/day</h3>
-                      <Link to="/society" className="text-xs font-bold border-b border-surf-accent hover:text-surf-accent">
+                    <div className="absolute inset-0 bg-linear-to-t from-black to-transparent"></div>
+                    <div className="absolute bottom-4 md:bottom-6 left-4 md:left-6 max-w-xs">
+                      <span className="text-surf-accent font-bold text-[10px] md:text-xs uppercase tracking-widest mb-2 block">The Society</span>
+                      <h3 className="font-display text-lg md:text-3xl uppercase mb-2 md:mb-4 leading-none">Ride this board for $25/day</h3>
+                      <Link to="/society" className="text-xs font-bold border-b border-surf-accent hover:text-surf-accent inline-block">
                         Join the Club
                       </Link>
                     </div>
@@ -178,7 +173,6 @@ export default function Shop() {
 
             return productCard
           })}
-
         </div>
 
         {/* Load More */}
@@ -188,8 +182,7 @@ export default function Shop() {
             <div className="absolute inset-0 bg-surf-accent translate-y-full group-hover:translate-y-0 transition-transform"></div>
           </button>
         </div>
-
-      </main>
-    </div>
+      </div>
+    </>
   )
 }

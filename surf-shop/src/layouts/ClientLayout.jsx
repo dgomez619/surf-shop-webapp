@@ -2,7 +2,7 @@ import { Outlet, Link } from 'react-router-dom';
 import { useState } from 'react';
 
 export default function ClientLayout() {
-  const [cartCount, setCartCount] = useState(2); // Mock state
+  const [cartCount, _setCartCount] = useState(2); // Mock state
 
   return (
     <div className="bg-surf-black text-white min-h-screen flex flex-col">
@@ -43,8 +43,8 @@ export default function ClientLayout() {
         </div>
       </nav>
 
-      {/* Main Content Wrapper */}
-      <main className="pt-24 pb-12 px-4 max-w-[1600px] mx-auto min-h-screen">
+      {/* Main Content Wrapper - Allow child content full control */}
+      <main className="pt-24 pb-12 w-full min-h-screen">
         <Outlet />
       </main>
 
