@@ -21,6 +21,9 @@ export default function Shop() {
 
   return (
     <>
+
+    <br />
+    <br />
       {/* Marquee Banner - Full width */}
       <div className="w-screen relative left-1/2 right-1/2 -mx-[50vw] bg-surf-accent text-black overflow-hidden py-2 border-b border-black">
         <div className="flex gap-8 items-center animate-scroll font-mono font-bold text-sm tracking-widest uppercase whitespace-nowrap">
@@ -39,8 +42,36 @@ export default function Shop() {
         </div>
       </div>
 
-      {/* Main Content - Constrained width */}
-      <div className="px-4">
+      {/* Status & Actions Bar */}
+      <div className="w-full px-4 py-3 flex flex-col md:flex-row md:justify-end md:items-center gap-4">
+        <div className="flex items-center gap-2 bg-surf-card px-3 py-1 rounded-full border border-white/10">
+          <span className="w-2 h-2 rounded-full bg-green-500"></span>
+          <span className="text-xs font-mono text-gray-400">SHOP OPEN UNTIL 8PM</span>
+        </div>
+      </div>
+
+      {/* Category Pills - Scrollable (Fixed position below nav) */}
+      <div className="sticky-below-nav w-full overflow-x-auto hide-scrollbar bg-surf-black/80 backdrop-blur-md py-2 border-b border-white/5">
+        <div className="px-4 flex gap-2 min-w-max pb-2">
+          {categories.map(cat => (
+            <button
+              key={cat}
+              onClick={() => setSelectedCategory(cat)}
+              className={`px-4 md:px-6 py-2 rounded-full font-bold uppercase text-xs md:text-sm whitespace-nowrap transition-colors border shrink-0 ${
+                selectedCategory === cat
+                  ? 'bg-white text-black border-white'
+                  : 'bg-transparent hover:bg-white/10 text-gray-300 hover:text-white border-white/20'
+              }`}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
+      </div>
+      
+
+      {/* Main Content - Constrained width with padding to account for fixed pills bar */}
+      <div className="px-4 pt-20">
         {/* Header */}
         <div className="mb-8 md:mb-12">
           <h1 className="font-display text-4xl md:text-6xl lg:text-8xl uppercase leading-[0.85]">
@@ -49,25 +80,6 @@ export default function Shop() {
           <p className="text-gray-400 mt-2 md:mt-4 max-w-md text-sm md:text-base">
             Curated hardgoods and softgoods for the La Jolla reef breaks. Verified by locals.
           </p>
-        </div>
-
-        {/* Category Pills - Scrollable */}
-        <div className="w-full overflow-x-auto hide-scrollbar mb-6 md:mb-8">
-          <div className="flex gap-2 min-w-max pb-2">
-            {categories.map(cat => (
-              <button
-                key={cat}
-                onClick={() => setSelectedCategory(cat)}
-                className={`px-4 md:px-6 py-2 rounded-full font-bold uppercase text-xs md:text-sm whitespace-nowrap transition-colors border shrink-0 ${
-                  selectedCategory === cat
-                    ? 'bg-white text-black border-white'
-                    : 'bg-transparent hover:bg-white/10 text-gray-300 hover:text-white border-white/20'
-                }`}
-              >
-                {cat}
-              </button>
-            ))}
-          </div>
         </div>
 
         {/* Product Grid */}

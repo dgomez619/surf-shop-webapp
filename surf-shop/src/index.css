@@ -194,4 +194,17 @@
     .animate-scroll {
         animation: scroll 30s linear infinite;
     }
+
+    /* Fixed positioning for category pills below nav */
+    .sticky-below-nav {
+        position: fixed;
+        top: 80px;
+        width: 100%;
+        z-index: 40;
+    }
+
+    /* Marquee banner positioning below category pills when fixed */
+    .marquee-below-pills {
+        margin-top: 64px;
+    }
 }
