@@ -1,8 +1,41 @@
 import { Outlet, Link } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 export default function ClientLayout() {
   const [cartCount, _setCartCount] = useState(2); // Mock state
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const mobileMenuRef = useRef(null);
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (isMobileMenuOpen && mobileMenuRef.current && !mobileMenuRef.current.contains(event.target)) {
+        setIsMobileMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [isMobileMenuOpen]);
+
+  // Prevent body scroll when menu is open
+  useEffect(() => {
+    if (isMobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isMobileMenuOpen]);
+
+  const closeMobileMenu = () => setIsMobileMenuOpen(false);
 
   return (
     <div className="bg-surf-black text-white min-h-screen flex flex-col">
@@ -11,7 +44,7 @@ export default function ClientLayout() {
         <div className="max-w-[1600px] mx-auto px-4 h-20 flex items-center justify-between">
           
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2 group">
+          <Link to="/" className="flex items-center gap-2 group" onClick={closeMobileMenu}>
             <i className="ph-fill ph-wave-sine text-3xl text-surf-accent group-hover:rotate-12 transition-transform"></i>
             <div className="flex flex-col leading-none">
               <span className="font-display text-2xl tracking-wide uppercase">Bird Rock</span>
@@ -31,14 +64,62 @@ export default function ClientLayout() {
 
           {/* Actions */}
           <div className="flex items-center gap-4">
-            <button className="hover:text-surf-accent"><i className="ph text-2xl ph-magnifying-glass"></i></button>
-            <button className="hover:text-surf-accent relative">
+            <button className="hover:text-surf-accent transition-colors"><i className="ph text-2xl ph-magnifying-glass"></i></button>
+            <button className="hover:text-surf-accent transition-colors relative">
               <i className="ph text-2xl ph-bag"></i>
               <span className="absolute -top-1 -right-1 w-4 h-4 bg-surf-accent text-black text-[10px] flex items-center justify-center rounded-full font-bold">
                 {cartCount}
               </span>
             </button>
-            <button className="md:hidden hover:text-surf-accent"><i className="ph text-3xl ph-list"></i></button>
+            <button 
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="md:hidden hover:text-surf-accent transition-colors"
+              aria-label="Toggle menu"
+            >
+              <i className={`ph text-3xl transition-all duration-300 ${isMobileMenuOpen ? 'ph-x' : 'ph-list'}`}></i>
+            </button>
+          </div>
+        </div>
+
+        {/* Mobile Menu */}
+        <div
+          ref={mobileMenuRef}
+          className={`md:hidden absolute top-20 left-0 right-0 bg-surf-black/98 backdrop-blur-xl border-b border-white/10 transition-all duration-300 ease-in-out ${
+            isMobileMenuOpen 
+              ? 'opacity-100 translate-y-0 pointer-events-auto' 
+              : 'opacity-0 -translate-y-4 pointer-events-none'
+          }`}
+        >
+          <div className="max-w-[1600px] mx-auto px-4 py-6 flex flex-col gap-1">
+            <Link 
+              to="/shop" 
+              onClick={closeMobileMenu}
+              className="py-4 px-4 hover:bg-white/5 rounded-lg font-semibold tracking-wide uppercase text-sm transition-colors hover:text-surf-accent border-b border-white/5"
+            >
+              Shop
+            </Link>
+            <Link 
+              to="/rentals" 
+              onClick={closeMobileMenu}
+              className="py-4 px-4 hover:bg-white/5 rounded-lg font-semibold tracking-wide uppercase text-sm transition-colors hover:text-surf-accent border-b border-white/5"
+            >
+              Rentals
+            </Link>
+            <Link 
+              to="/surfshack" 
+              onClick={closeMobileMenu}
+              className="py-4 px-4 hover:bg-white/5 rounded-lg font-semibold tracking-wide uppercase text-sm transition-colors hover:text-surf-accent border-b border-white/5"
+            >
+              The Surfshack
+            </Link>
+            <Link 
+              to="/society" 
+              onClick={closeMobileMenu}
+              className="py-4 px-4 hover:bg-white/5 rounded-lg font-semibold tracking-wide uppercase text-sm transition-colors hover:text-surf-accent flex items-center gap-2"
+            >
+              <i className="ph-bold ph-crown text-surf-accent"></i>
+              The Society
+            </Link>
           </div>
         </div>
       </nav>

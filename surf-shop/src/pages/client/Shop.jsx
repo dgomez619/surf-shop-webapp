@@ -2,13 +2,118 @@ import { Link } from 'react-router-dom'
 import { useState } from 'react'
 
 const products = [
-  { id: 1, name: 'Bird Rock Logo Tee', category: 'Men', type: 'apparel', price: 32, memberPrice: 28, badge: 'New Drop', icon: 'ph-t-shirt', color: 'group-hover:border-surf-accent/50' },
-  { id: 2, name: 'Pyzel Crisis', category: 'Surfboards', type: 'board', price: 850, memberPrice: null, specs: { length: "5'10\"", vol: '29.5L', fin: 'Twin' }, badge: 'Free Rental Demo', icon: 'ph-wave-sine', color: 'group-hover:border-blue-500' },
-  { id: 3, name: 'Sticky Bumps Wax', category: 'Accessories', type: 'accessory', price: 4, memberPrice: null, icon: 'ph-drop', color: 'group-hover:border-surf-accent/50' },
-  { id: 4, name: 'Dawn Patrol Hoodie', category: 'Women', type: 'apparel', price: 65, memberPrice: 55, icon: 'ph-hoodie', color: 'group-hover:border-pink-500' },
-  { id: 5, name: 'Grom Trucker Hat', category: 'Groms', type: 'accessory', price: 24, memberPrice: null, icon: 'ph-baseball-cap', color: 'group-hover:border-yellow-500' },
-  { id: 6, name: 'CJ Nelson Sprout', category: 'Surfboards', type: 'board', price: 1100, memberPrice: null, specs: { length: "9'2\"", fin: 'Single', style: 'Log' }, icon: 'ph-wave-sine', color: 'group-hover:border-blue-500' },
-  { id: 7, name: 'Sea Salt Candle', category: 'Home', type: 'accessory', price: 28, memberPrice: null, icon: 'ph-fire', color: 'group-hover:border-surf-accent/50' },
+  {
+    id: 1,
+    name: 'Bird Rock Logo Tee',
+    category: 'Men',
+    type: 'apparel',
+    price: 32,
+    memberPrice: 28,
+    badge: 'New Drop',
+    icon: 'ph-t-shirt',
+    color: 'group-hover:border-surf-accent/50'
+  },
+
+  {
+    id: 2,
+    name: 'Pyzel Crisis',
+    category: 'Surfboards',
+    type: 'board',
+    price: 850,
+    memberPrice: null,
+    specs: {
+      length: "5'10\"",
+      vol: '29.5L',
+      fin: 'Twin'
+    },
+    badge: 'Free Rental Demo',
+    icon: 'ph-wave-sine',
+    color: 'group-hover:border-blue-500'
+  },
+
+  {
+    id: 3,
+    name: 'Sticky Bumps Wax',
+    category: 'Accessories',
+    type: 'accessory',
+    price: 4,
+    memberPrice: null,
+    icon: 'ph-drop',
+    color: 'group-hover:border-surf-accent/50'
+  },
+
+  {
+    id: 4,
+    name: 'Dawn Patrol Hoodie',
+    category: 'Women',
+    type: 'apparel',
+    price: 65,
+    memberPrice: 55,
+    icon: 'ph-hoodie',
+    color: 'group-hover:border-pink-500'
+  },
+
+  {
+    id: 5,
+    name: 'Grom Trucker Hat',
+    category: 'Groms',
+    type: 'accessory',
+    price: 24,
+    memberPrice: null,
+    icon: 'ph-baseball-cap',
+    color: 'group-hover:border-yellow-500'
+  },
+
+  {
+    id: 6,
+    name: 'CJ Nelson Sprout',
+    category: 'Surfboards',
+    type: 'board',
+    price: 1100,
+    memberPrice: null,
+    specs: {
+      length: "9'2\"",
+      fin: 'Single',
+      style: 'Log'
+    },
+    icon: 'ph-wave-sine',
+    color: 'group-hover:border-blue-500'
+  },
+
+  {
+    id: 7,
+    name: 'Sea Salt Candle',
+    category: 'Home',
+    type: 'accessory',
+    price: 28,
+    memberPrice: null,
+    icon: 'ph-fire',
+    color: 'group-hover:border-surf-accent/50'
+  },
+]
+
+const adBreaks = [
+  {
+    id: 1,
+    image: 'https://images.unsplash.com/photo-1520116468816-95b69f847357?q=80&w=2574&auto=format&fit=crop',
+    category: 'The Society',
+    title: 'Ride this board for $25/day',
+    link: '/society'
+  },
+  {
+    id: 2,
+    image: 'https://images.unsplash.com/photo-1505142468610-359e7d316be0?q=80&w=2626&auto=format&fit=crop',
+    category: 'Rentals',
+    title: 'Wetsuits & boards ready to go',
+    link: '/rentals'
+  },
+  {
+    id: 3,
+    image: 'https://images.unsplash.com/photo-1484154218962-a197022b5858?q=80&w=2574&auto=format&fit=crop',
+    category: 'The Surfshack',
+    title: 'Your home away from home',
+    link: '/surfshack'
+  }
 ]
 
 export default function Shop() {
@@ -22,8 +127,8 @@ export default function Shop() {
   return (
     <>
 
-    <br />
-    <br />
+      <br />
+      <br />
       {/* Marquee Banner - Full width */}
       <div className="w-screen relative left-1/2 right-1/2 -mx-[50vw] bg-surf-accent text-black overflow-hidden py-2 border-b border-black">
         <div className="flex gap-8 items-center animate-scroll font-mono font-bold text-sm tracking-widest uppercase whitespace-nowrap">
@@ -57,18 +162,17 @@ export default function Shop() {
             <button
               key={cat}
               onClick={() => setSelectedCategory(cat)}
-              className={`px-4 md:px-6 py-2 rounded-full font-bold uppercase text-xs md:text-sm whitespace-nowrap transition-colors border shrink-0 ${
-                selectedCategory === cat
-                  ? 'bg-white text-black border-white'
-                  : 'bg-transparent hover:bg-white/10 text-gray-300 hover:text-white border-white/20'
-              }`}
+              className={`px-4 md:px-6 py-2 rounded-full font-bold uppercase text-xs md:text-sm whitespace-nowrap transition-colors border shrink-0 ${selectedCategory === cat
+                ? 'bg-white text-black border-white'
+                : 'bg-transparent hover:bg-white/10 text-gray-300 hover:text-white border-white/20'
+                }`}
             >
               {cat}
             </button>
           ))}
         </div>
       </div>
-      
+
 
       {/* Main Content - Constrained width with padding to account for fixed pills bar */}
       <div className="px-4 pt-20">
@@ -88,7 +192,7 @@ export default function Shop() {
             const productCard = (
               <div
                 key={product.id}
-                className={`group col-span-1 ${product.type === 'board' ? 'lg:row-span-2' : ''}`}
+                className={`group col-span-1 ${product.type === 'board' ? 'lg:row-span-1' : ''}`}
               >
                 {/* Card Container */}
                 <div
@@ -96,8 +200,8 @@ export default function Shop() {
                     ${product.type === 'board'
                       ? 'aspect-[2/3.5] md:aspect-3/4 lg:aspect-4/5'
                       : product.type === 'accessory'
-                      ? 'aspect-square'
-                      : 'aspect-[3/4.5] md:aspect-3/4 lg:aspect-3/4'
+                        ? 'aspect-square'
+                        : 'aspect-[3/4.5] md:aspect-3/4 lg:aspect-3/4'
                     } bg-surf-card w-full`}
                 >
                   {/* Background */}
@@ -157,25 +261,29 @@ export default function Shop() {
               </div>
             )
 
-            // Insert ad break after 3rd product
-            if (index === 2 && selectedCategory === 'All') {
+            // Insert ad break after every 3rd product
+            if ((index + 2) % 2 === 0 && selectedCategory === 'All') {
+              // Calculate which ad to show based on how many ads have been shown
+              const adIndex = Math.floor((index + 2) / 2) % adBreaks.length
+              const currentAd = adBreaks[adIndex]
+
               return (
                 <div key={`group-${index}`} className="contents">
                   {productCard}
 
-                  {/* Society Ad Break */}
-                  <div className="col-span-1 md:col-span-2 lg:col-span-2 lg:row-span-2 aspect-video md:aspect-16/7 relative rounded-xl overflow-hidden group">
+                  {/* Ad Break - Cycles through different ads */}
+                  <div className="col-span-1 aspect-[2/3.5] md:aspect-3/4 lg:aspect-4/5 relative rounded-xl overflow-hidden group">
                     <img
-                      src="https://images.unsplash.com/photo-1520116468816-95b69f847357?q=80&w=2574&auto=format&fit=crop"
+                      src={currentAd.image}
                       className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:scale-105 transition-transform duration-700"
-                      alt="The Society"
+                      alt={currentAd.category}
                     />
                     <div className="absolute inset-0 bg-linear-to-t from-black to-transparent"></div>
                     <div className="absolute bottom-4 md:bottom-6 left-4 md:left-6 max-w-xs">
-                      <span className="text-surf-accent font-bold text-[10px] md:text-xs uppercase tracking-widest mb-2 block">The Society</span>
-                      <h3 className="font-display text-lg md:text-3xl uppercase mb-2 md:mb-4 leading-none">Ride this board for $25/day</h3>
-                      <Link to="/society" className="text-xs font-bold border-b border-surf-accent hover:text-surf-accent inline-block">
-                        Join the Club
+                      <span className="text-surf-accent font-bold text-[10px] md:text-xs uppercase tracking-widest mb-2 block">{currentAd.category}</span>
+                      <h3 className="font-display text-lg md:text-3xl uppercase mb-2 md:mb-4 leading-none">{currentAd.title}</h3>
+                      <Link to={currentAd.link} className="text-xs font-bold border-b border-surf-accent hover:text-surf-accent inline-block">
+                        Learn More
                       </Link>
                     </div>
                   </div>
