@@ -1,6 +1,8 @@
+import { Link } from 'react-router-dom'
+
 const SurfShack = () => {
   return (
- <div className="bento-card bento-surfshack md:col-span-1 min-h-[250px] group cursor-pointer">
+ <Link to="/surfshack" className="bento-card bento-surfshack md:col-span-1 min-h-[250px] group cursor-pointer">
             <div className="card-bg bg-[url('https://images.unsplash.com/photo-1505691723518-36aee14c2e2f?q=80&w=2070&auto=format&fit=crop')] bg-cover bg-center opacity-40 group-hover:scale-105 transition-transform duration-500"></div>
             <div className="card-overlay bg-gradient-to-t from-black/70 to-transparent"></div>
             <div className="relative z-10 p-2 flex flex-col justify-between h-full">
@@ -15,7 +17,7 @@ const SurfShack = () => {
                 </button>
               </div>
             </div>
-          </div>  )
+          </Link>  )
 }
 
 export default SurfShack

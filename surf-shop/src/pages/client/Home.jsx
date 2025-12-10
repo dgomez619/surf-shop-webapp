@@ -15,6 +15,7 @@ import Newsletter from "../../components/ui/Newsletter";
 export default function Home() {
     return (
       <>
+      {/* Main Grid Layout */}
         <div className="bento-grid grid grid-cols-1 md:grid-cols-4 auto-rows-[minmax(180px,auto)] gap-4">
   
           {/* 1. Hero Module */}

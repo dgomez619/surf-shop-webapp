@@ -84,7 +84,7 @@ export default function ClientLayout() {
         {/* Mobile Menu */}
         <div
           ref={mobileMenuRef}
-          className={`md:hidden absolute top-20 left-0 right-0 bg-surf-black/98 backdrop-blur-xl border-b border-white/10 transition-all duration-300 ease-in-out ${
+          className={`md:hidden absolute top-20 left-0 right-0 bg-black backdrop-blur-xl border-b border-white/10 transition-all duration-300 ease-in-out ${
             isMobileMenuOpen 
               ? 'opacity-100 translate-y-0 pointer-events-auto' 
               : 'opacity-0 -translate-y-4 pointer-events-none'

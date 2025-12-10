@@ -1,0 +1,17 @@
+// Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
+
+// Your web app's Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyCt64cva4qMa-M0pDDs02th7vZH_5ODBJc",
+  authDomain: "surf-shop-webapp.firebaseapp.com",
+  projectId: "surf-shop-webapp",
+  storageBucket: "surf-shop-webapp.firebasestorage.app",
+  messagingSenderId: "96020675744",
+  appId: "1:96020675744:web:b4a2dfc84e5bf401331dc5"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);

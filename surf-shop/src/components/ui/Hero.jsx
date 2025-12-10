@@ -24,9 +24,11 @@ const Hero = () => {
                   Shop The Drop
                 </button>
                 </Link>
+                <Link to="/rentals">
                 <button className="border border-white text-white font-bold uppercase tracking-wider px-8 py-4 rounded hover:bg-white hover:text-black transition-colors">
                   Book Rentals
                 </button>
+                </Link>
               </div>
             </div>
           </div>  )

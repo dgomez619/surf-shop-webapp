@@ -1,8 +1,9 @@
 import React from 'react'
+import { Link } from 'react-router-dom'
 
 const Groms = () => {
   return (
-  <div className="bento-card bento-groms md:col-span-1 min-h-[200px] group cursor-pointer">
+  <Link to="/shop?category=Groms" className="bento-card bento-groms md:col-span-1 min-h-[200px] group cursor-pointer">
             <div className="absolute top-0 right-0 p-4 opacity-20">
               <i className="ph-fill ph-smiley text-6xl"></i>
             </div>
@@ -10,7 +11,7 @@ const Groms = () => {
               <h3 className="font-display text-3xl uppercase group-hover:text-surf-accent transition-colors">Groms</h3>
               <p className="text-xs text-gray-400">Future rippers</p>
             </div>
-          </div>  )
+          </Link>  )
 }
 
 export default Groms

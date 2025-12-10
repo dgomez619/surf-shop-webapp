@@ -1,8 +1,9 @@
 import React from 'react'
+import { Link } from 'react-router-dom'
 
 const Society = () => {
   return (
- <div className="bento-card bento-society md:col-span-1 md:row-span-2 bg-gradient-to-b from-blue-900 to-surf-black flex flex-col justify-between border-blue-500/30">
+ <Link to="/society" className="bento-card bento-society md:col-span-1 md:row-span-2 bg-gradient-to-b from-blue-900 to-surf-black flex flex-col justify-between border-blue-500/30">
             <div>
               <div className="flex items-center justify-between mb-2">
                 <i className="ph-fill ph-crown text-3xl text-yellow-400"></i>
@@ -21,7 +22,7 @@ const Society = () => {
             <button className="w-full py-3 bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/10 rounded uppercase font-bold text-sm tracking-widest transition-colors">
               Join The Club
             </button>
-          </div>  )
+          </Link>  )
 }
 
 export default Society

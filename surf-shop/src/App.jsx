@@ -1,5 +1,7 @@
 // 1. Remove the import for './App.css'
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import Login from './pages/admin/Login';
+import ProductForm from './pages/admin/ProductForm';
 
 // Layouts
 import ClientLayout from './layouts/ClientLayout';
@@ -18,7 +20,7 @@ function App() {
     <BrowserRouter>
       {/* 2. No className="App" needed anymore. The Router is the root. */}
       <Routes>
-        
+
         {/* CLIENT SIDE ROUTES */}
         <Route path="/" element={<ClientLayout />}>
           <Route index element={<Home />} />
@@ -31,8 +33,11 @@ function App() {
 
         {/* ADMIN SIDE ROUTES */}
         <Route path="/admin" element={<AdminLayout />}>
-          <Route index element={<Dashboard />} />
+          <Route path="/admin/login" element={<Login />} />
+          <Route path="/admin/dashboard" element={<Dashboard />} />
           {/* Add more admin routes here later, e.g., <Route path="settings" ... /> */}
+          <Route path="/admin/products/new" element={<ProductForm />} />
+          <Route path="/admin/products/:id/edit" element={<ProductForm />} />
         </Route>
 
       </Routes>

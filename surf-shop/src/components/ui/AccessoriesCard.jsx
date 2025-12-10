@@ -1,8 +1,9 @@
 import React from 'react'
+import { Link } from 'react-router-dom'
 
 const Accessories = () => {
   return (
-<div className="bento-card bento-accessories md:col-span-2 min-h-[200px] flex items-center justify-between group cursor-pointer bg-gray-800">
+<Link to="/shop?category=Accessories" className="bento-card bento-accessories md:col-span-2 min-h-[200px] flex items-center justify-between group cursor-pointer bg-gray-800">
             <div className="pl-4">
               <h3 className="font-display text-4xl uppercase mb-2">Home & <br/>Gear</h3>
               <p className="text-gray-400 text-sm">Fins, Leashes, Wax, & Decor</p>
@@ -15,7 +16,7 @@ const Accessories = () => {
                 </div>
                </div>
             </div>
-          </div>  )
+          </Link>  )
 }
 
 export default Accessories
