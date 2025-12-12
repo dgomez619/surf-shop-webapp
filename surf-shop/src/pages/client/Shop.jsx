@@ -72,7 +72,7 @@ const ShopProductCard = ({ product, addToCart }) => {
 
         {/* Size Selection (if applicable) */}
         {product.sizes && product.sizes.length > 0 && (
-          <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-30">
+          <div className="absolute top-2 right-2 flex gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity z-30">
             {product.sizes.map((size) => (
               <button
                 key={size}
@@ -94,7 +94,7 @@ const ShopProductCard = ({ product, addToCart }) => {
 
         {/* Board Specs Overlay */}
         {product.type === 'board' && product.specs && Object.values(product.specs).some(val => val) && (
-          <div className="absolute bottom-0 left-0 right-0 p-3 md:p-4 bg-black/60 backdrop-blur-sm border-t border-white/10 translate-y-full group-hover:translate-y-0 transition-all text-[10px] font-mono z-10">
+          <div className="absolute bottom-0 left-0 right-0 p-3 md:p-4 bg-black/60 backdrop-blur-sm border-t border-white/10 opacity-100 translate-y-0 md:opacity-100 md:translate-y-full md:group-hover:translate-y-0 transition-all text-[10px] font-mono z-10">
             <div className="grid grid-cols-3 gap-2 text-center text-gray-300">
               {Object.entries(product.specs).map(([key, val]) => (
                 <div key={key}>
@@ -109,7 +109,7 @@ const ShopProductCard = ({ product, addToCart }) => {
         {/* Add to Cart Button */}
         <button 
           onClick={handleAddToCart}
-          className="absolute bottom-3 right-3 bg-white text-black w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 z-30 cursor-pointer hover:bg-surf-accent shadow-lg"
+          className="absolute bottom-3 right-3 bg-white text-black w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all duration-300 z-30 cursor-pointer hover:bg-surf-accent shadow-lg"
         >
           <i className="ph-bold ph-plus text-lg"></i>
         </button>
