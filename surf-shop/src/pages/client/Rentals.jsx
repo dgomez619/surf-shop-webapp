@@ -1,65 +1,8 @@
-import { useState, useMemo } from 'react'
+import { useState, useEffect, useMemo } from 'react'
+import { db } from '../../firebase' // Removed .js extension to fix resolution error
+import { collection, getDocs } from 'firebase/firestore'
 
-// --- MOCK DATABASE ---
-const inventory = [
-  {
-    id: "b001",
-    name: "Firewire Seaside",
-    make: "Firewire",
-    category: "Shortboard",
-    type: "board",
-    image: "https://images.unsplash.com/photo-1531722569936-825d3dd91b15?q=80&w=2070&auto=format&fit=crop",
-    specs: { length: "5'6\"", vol: "32.5L", fin: "Quad" },
-    rates: { daily: 45, member: 25 },
-    isDemoQuiver: true
-  },
-  {
-    id: "b002",
-    name: "Channel Islands Mid",
-    make: "Channel Islands",
-    category: "Midlength",
-    type: "board",
-    image: "https://images.unsplash.com/photo-1415604934674-561df9abf539?q=80&w=2560&auto=format&fit=crop",
-    specs: { length: "7'2\"", vol: "45L", fin: "2+1" },
-    rates: { daily: 45, member: 25 },
-    isDemoQuiver: false
-  },
-  {
-    id: "b003",
-    name: "Ricky Carroll Log",
-    make: "RC Surfboards",
-    category: "Longboard",
-    type: "board",
-    image: "https://images.unsplash.com/photo-1590632863920-80a5e8489f66?q=80&w=2609&auto=format&fit=crop",
-    specs: { length: "9'6\"", vol: "N/A", fin: "Single" },
-    rates: { daily: 35, member: 15 },
-    isDemoQuiver: false
-  },
-  {
-    id: "b004",
-    name: "Wavestorm Classic",
-    make: "Costco",
-    category: "Foamie",
-    type: "board",
-    image: "https://images.unsplash.com/photo-1629827376374-298f98c772e0?q=80&w=2671&auto=format&fit=crop",
-    specs: { length: "8'0\"", vol: "86L", fin: "Thruster" },
-    rates: { daily: 20, member: 10 },
-    isDemoQuiver: false
-  },
-  {
-    id: "g001",
-    name: "DaFin Swim Fins",
-    make: "DaFin",
-    category: "Fins",
-    type: "gear",
-    image: "https://images.unsplash.com/photo-1532009877282-3340270e0529?q=80&w=2670&auto=format&fit=crop",
-    specs: { length: "M/L", vol: "-", fin: "-" },
-    rates: { daily: 10, member: 0 },
-    isDemoQuiver: false
-  }
-]
-
-// Mock Bookings
+// Mock Bookings (Keeping this logic local for now as requested)
 const today = new Date();
 const threeDaysFromNow = new Date();
 threeDaysFromNow.setDate(today.getDate() + 3);
@@ -67,7 +10,7 @@ threeDaysFromNow.setDate(today.getDate() + 3);
 const existingBookings = [
   {
     id: "booking_123",
-    itemId: "b001", 
+    itemId: "b001", // Make sure this ID matches one of your seeded items if you want to see the "Booked" status
     startDate: today.toISOString().split('T')[0], 
     endDate: threeDaysFromNow.toISOString().split('T')[0],
     status: "confirmed"
@@ -77,6 +20,10 @@ const existingBookings = [
 const formatDate = (date) => date.toISOString().split('T')[0];
 
 export default function Rentals() {
+  // --- STATE ---
+  const [rentals, setRentals] = useState([]) // Replaces mock inventory
+  const [loading, setLoading] = useState(true)
+  
   const [dateRange, setDateRange] = useState({
     start: formatDate(new Date()),
     end: formatDate(new Date(new Date().setDate(new Date().getDate() + 1)))
@@ -85,9 +32,32 @@ export default function Rentals() {
   const [selectedCategory, setSelectedCategory] = useState('All');
   const categories = ['All', 'Shortboard', 'Midlength', 'Longboard', 'Foamie', 'Fins'];
 
+  // --- 1. FETCH DATA ---
+  useEffect(() => {
+    const fetchRentals = async () => {
+      try {
+        const querySnapshot = await getDocs(collection(db, 'rentals'))
+        const items = querySnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }))
+        setRentals(items)
+      } catch (error) {
+        console.error("Error fetching rental fleet:", error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchRentals()
+  }, [])
+
+  // --- 2. AVAILABILITY LOGIC ---
   const availableInventory = useMemo(() => {
-    return inventory.map(item => {
+    // We map over the fetched 'rentals' state instead of the old 'inventory' constant
+    return rentals.map(item => {
       const isBooked = existingBookings.some(booking => {
+        // Note: In real app, booking.itemId needs to match item.id from Firestore
         if (booking.itemId !== item.id) return false;
         
         const bookingStart = new Date(booking.startDate);
@@ -100,7 +70,7 @@ export default function Rentals() {
 
       return { ...item, status: isBooked ? 'unavailable' : 'available' };
     });
-  }, [dateRange]);
+  }, [dateRange, rentals]);
 
   const displayedItems = selectedCategory === 'All' 
     ? availableInventory 
@@ -129,10 +99,6 @@ export default function Rentals() {
       </div>
 
       {/* 2. MISSION CONTROL (Sticky Filter Bar) */}
-      {/* FIX APPLIED HERE:
-          1. Changed 'top-0' to 'top-20' (This accounts for your 80px Navbar height)
-          2. Ensure z-30 is high enough to be above content, but lower than Nav (z-50)
-      */}
       <div className="sticky top-20 z-30 w-full bg-surf-black/80 backdrop-blur-xl border-y border-white/10 shadow-2xl">
         <div className="max-w-[1600px] mx-auto px-4 py-4 md:py-6">
             <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
@@ -185,80 +151,110 @@ export default function Rentals() {
       {/* 3. INVENTORY GRID */}
       <main className="max-w-[1600px] mx-auto px-4 py-12">
         
-        {/* Helper Message if no items */}
-        {displayedItems.length === 0 && (
-            <div className="text-center py-24 border border-dashed border-white/10 rounded-xl">
-                <i className="ph-duotone ph-magnifying-glass text-4xl text-gray-600 mb-4"></i>
-                <p className="text-gray-400">No gear found in this category.</p>
+        {/* Loading State */}
+        {loading ? (
+           <div className="flex flex-col items-center justify-center py-24 gap-4">
+                <i className="ph-duotone ph-spinner-gap text-4xl animate-spin text-surf-accent"></i>
+                <span className="font-mono text-sm tracking-widest uppercase text-gray-500">Checking the racks...</span>
             </div>
-        )}
-
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-            
-            {displayedItems.map((item) => {
-                const isUnavailable = item.status === 'unavailable';
-
-                return (
-                    <div key={item.id} className={`group relative flex flex-col ${isUnavailable ? 'opacity-50 pointer-events-none grayscale' : ''}`}>
-                        
-                        {/* A. The "Card Face" (Image & Specs) */}
-                        <div className="relative aspect-[1/2] rounded-xl overflow-hidden bg-surf-card border border-white/5 group-hover:border-surf-accent/50 transition-all duration-500">
-                            
-                            {/* Image */}
-                            <img src={item.image} className="absolute inset-0 w-full h-full object-cover opacity-80 group-hover:scale-105 transition-transform duration-700" alt={item.name} />
-                            
-                            {/* Overlay Gradient */}
-                            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/90"></div>
-
-                            {/* Status Badge */}
-                            {isUnavailable && (
-                                <div className="absolute inset-0 bg-black/60 flex items-center justify-center backdrop-blur-sm z-20">
-                                    <div className="border-2 border-red-500 text-red-500 px-4 py-2 font-display text-2xl uppercase -rotate-12">
-                                        Booked
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Specs HUD (Head Up Display) */}
-                            <div className="absolute bottom-0 w-full p-4 z-10">
-                                <h3 className="font-display text-3xl uppercase leading-none mb-4 group-hover:text-surf-accent transition-colors">{item.name}</h3>
-                                
-                                <div className="grid grid-cols-3 border-t border-white/20 pt-3">
-                                    <div className="text-center border-r border-white/10">
-                                        <span className="block text-gray-500 text-[10px] uppercase font-bold tracking-widest">Len</span>
-                                        <span className="font-mono text-sm">{item.specs.length}</span>
-                                    </div>
-                                    <div className="text-center border-r border-white/10">
-                                        <span className="block text-gray-500 text-[10px] uppercase font-bold tracking-widest">Vol</span>
-                                        <span className="font-mono text-sm">{item.specs.vol}</span>
-                                    </div>
-                                    <div className="text-center">
-                                        <span className="block text-gray-500 text-[10px] uppercase font-bold tracking-widest">Fin</span>
-                                        <span className="font-mono text-sm">{item.specs.fin}</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* B. Pricing & Action */}
-                        <div className="mt-3 flex items-center justify-between px-1">
-                            <div>
-                                <div className="flex items-center gap-2">
-                                    <span className="text-gray-400 text-sm line-through decoration-red-500">${item.rates.daily}</span>
-                                    <span className="text-surf-accent font-mono font-bold text-lg">${item.rates.member}</span>
-                                </div>
-                                <span className="text-[10px] text-gray-500 uppercase tracking-widest">Daily Rate</span>
-                            </div>
-
-                            <button className="h-10 px-4 bg-white text-black font-bold uppercase text-xs rounded hover:bg-surf-accent transition-colors flex items-center gap-2 cursor-pointer">
-                                Add <i className="ph-bold ph-plus"></i>
-                            </button>
-                        </div>
-
+        ) : (
+            <>
+                {/* Helper Message if no items */}
+                {displayedItems.length === 0 && (
+                    <div className="text-center py-24 border border-dashed border-white/10 rounded-xl">
+                        <i className="ph-duotone ph-magnifying-glass text-4xl text-gray-600 mb-4"></i>
+                        <p className="text-gray-400">No gear found in this category.</p>
                     </div>
-                );
-            })}
-        </div>
+                )}
+
+                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+                    {displayedItems.map((item) => {
+                        const isUnavailable = item.status === 'unavailable';
+
+                        return (
+                            <div key={item.id} className={`group relative flex flex-col ${isUnavailable ? 'opacity-50 pointer-events-none grayscale' : ''}`}>
+                                
+                                {/* A. The "Card Face" (Image & Specs) */}
+                                <div className={`relative aspect-[1/2] rounded-xl overflow-hidden bg-surf-card transition-all duration-500 ${
+                                    item.isDemoQuiver 
+                                        ? 'border-2 border-yellow-500/40 group-hover:border-yellow-500/80' 
+                                        : 'border border-white/5 group-hover:border-surf-accent/50'
+                                }`}>
+                                    
+                                    {/* Image Logic */}
+                                    {item.image ? (
+                                        <img src={item.image} className="absolute inset-0 w-full h-full object-cover opacity-80 group-hover:scale-105 transition-transform duration-700" alt={item.name} />
+                                    ) : (
+                                        <div className="absolute inset-0 bg-gray-800 flex items-center justify-center">
+                                            <i className="ph-fill ph-wave-sine text-6xl text-gray-600"></i>
+                                        </div>
+                                    )}
+                                    
+                                    {/* Overlay Gradient */}
+                                    <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/90"></div>
+
+                                    {/* Demo Quiver Badge */}
+                                    {item.isDemoQuiver && !isUnavailable && (
+                                        <div className="absolute top-4 right-4 z-20 bg-gradient-to-r from-yellow-500 to-yellow-400 text-black px-3 py-1.5 rounded-lg shadow-lg flex items-center gap-1.5 border border-yellow-600/30">
+                                            <i className="ph-fill ph-crown text-sm"></i>
+                                            <span className="font-bold text-xs uppercase tracking-wider">Society Exclusive</span>
+                                        </div>
+                                    )}
+
+                                    {/* Status Badge */}
+                                    {isUnavailable && (
+                                        <div className="absolute inset-0 bg-black/60 flex items-center justify-center backdrop-blur-sm z-20">
+                                            <div className="border-2 border-red-500 text-red-500 px-4 py-2 font-display text-2xl uppercase -rotate-12">
+                                                Booked
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Specs HUD (Head Up Display) */}
+                                    <div className="absolute bottom-0 w-full p-4 z-10">
+                                        <h3 className="font-display text-3xl uppercase leading-none mb-4 group-hover:text-surf-accent transition-colors">{item.name}</h3>
+                                        
+                                        {/* Specs Grid - Safe access with optional chaining */}
+                                        {item.specs && (
+                                            <div className="grid grid-cols-3 border-t border-white/20 pt-3">
+                                                <div className="text-center border-r border-white/10">
+                                                    <span className="block text-gray-500 text-[10px] uppercase font-bold tracking-widest">Len</span>
+                                                    <span className="font-mono text-sm">{item.specs.length}</span>
+                                                </div>
+                                                <div className="text-center border-r border-white/10">
+                                                    <span className="block text-gray-500 text-[10px] uppercase font-bold tracking-widest">Vol</span>
+                                                    <span className="font-mono text-sm">{item.specs.vol}</span>
+                                                </div>
+                                                <div className="text-center">
+                                                    <span className="block text-gray-500 text-[10px] uppercase font-bold tracking-widest">Fin</span>
+                                                    <span className="font-mono text-sm">{item.specs.fin}</span>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* B. Pricing & Action */}
+                                <div className="mt-3 flex items-center justify-between px-1">
+                                    <div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-gray-400 text-sm line-through decoration-red-500">${item.rates?.daily}</span>
+                                            <span className="text-surf-accent font-mono font-bold text-lg">${item.rates?.member}</span>
+                                        </div>
+                                        <span className="text-[10px] text-gray-500 uppercase tracking-widest">Daily Rate</span>
+                                    </div>
+
+                                    <button className="h-10 px-4 bg-white text-black font-bold uppercase text-xs rounded hover:bg-surf-accent transition-colors flex items-center gap-2 cursor-pointer">
+                                        Add <i className="ph-bold ph-plus"></i>
+                                    </button>
+                                </div>
+
+                            </div>
+                        );
+                    })}
+                </div>
+            </>
+        )}
       </main>
 
       {/* 4. SURF SOCIETY UPSELL (Sticky Footer) */}

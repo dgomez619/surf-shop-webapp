@@ -1,7 +1,146 @@
 import { Link, useSearchParams } from 'react-router-dom'
-import { useState, useEffect, Fragment } from 'react'
+import { useState, useEffect } from 'react'
 import { db } from '../../firebase' // Reverted to extension-less import
 import { collection, getDocs, query, orderBy } from 'firebase/firestore'
+import { useCart } from '../../context/CartContext'
+
+// ShopProductCard Component - Manages individual product with size selection
+const ShopProductCard = ({ product, addToCart }) => {
+  const [selectedSize, setSelectedSize] = useState(null)
+  
+  // Helper for border hover colors
+  const getHoverColor = (cat) => {
+    if(cat === 'Surfboards') return 'group-hover:border-blue-500'
+    if(cat === 'Women') return 'group-hover:border-pink-500'
+    if(cat === 'Groms') return 'group-hover:border-yellow-500'
+    return 'group-hover:border-surf-accent/50'
+  }
+
+  const handleAddToCart = () => {
+    // Check if product requires size selection
+    if (product.sizes && product.sizes.length > 0) {
+      if (!selectedSize) {
+        alert('Please select a size.')
+        return
+      }
+    }
+
+    // Add to cart with selected size (if applicable)
+    addToCart({
+      ...product,
+      selectedSize: selectedSize || undefined,
+      type: 'shop' // Mark as shop product (not rental)
+    })
+  }
+
+  const hoverColor = getHoverColor(product.category)
+
+  return (
+    <div className={`group col-span-1 ${product.type === 'board' ? 'lg:row-span-1' : ''}`}>
+      {/* Card Container */}
+      <div
+        className={`relative rounded-xl overflow-hidden border border-white/5 ${hoverColor} transition-all duration-300
+          ${product.type === 'board'
+            ? 'aspect-[2/3.5] md:aspect-3/4 lg:aspect-4/5'
+            : product.type === 'accessory'
+              ? 'aspect-square'
+              : 'aspect-[3/4.5] md:aspect-3/4 lg:aspect-3/4'
+          } bg-surf-card w-full`}
+      >
+        {/* Background Logic: Real Image or Placeholder */}
+        {product.image ? (
+          <div className="absolute inset-0">
+            <img 
+              src={product.image} 
+              alt={product.name} 
+              className="w-full h-full object-cover opacity-80 group-hover:scale-105 transition-transform duration-700" 
+            />
+            <div className="absolute inset-0 bg-linear-to-t from-surf-black via-transparent to-transparent opacity-90"></div>
+          </div>
+        ) : (
+          <div className="absolute inset-0 bg-gray-800 flex items-center justify-center text-gray-600">
+            <i className={`ph-fill ${product.icon} text-5xl md:text-6xl`}></i>
+          </div>
+        )}
+
+        {/* Badge */}
+        {product.badge && (
+          <div className="absolute top-2 left-2 bg-surf-accent text-black text-[10px] font-bold px-2 py-1 uppercase rounded-sm z-30">
+            {product.badge}
+          </div>
+        )}
+
+        {/* Size Selection (if applicable) */}
+        {product.sizes && product.sizes.length > 0 && (
+          <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-30">
+            {product.sizes.map((size) => (
+              <button
+                key={size}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setSelectedSize(size)
+                }}
+                className={`w-8 h-8 rounded border text-xs font-bold transition-all ${
+                  selectedSize === size
+                    ? 'bg-surf-accent text-black border-surf-accent'
+                    : 'bg-black/60 text-white border-white/30 hover:border-surf-accent'
+                }`}
+              >
+                {size}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Board Specs Overlay */}
+        {product.type === 'board' && product.specs && Object.values(product.specs).some(val => val) && (
+          <div className="absolute bottom-0 left-0 right-0 p-3 md:p-4 bg-black/60 backdrop-blur-sm border-t border-white/10 translate-y-full group-hover:translate-y-0 transition-all text-[10px] font-mono z-10">
+            <div className="grid grid-cols-3 gap-2 text-center text-gray-300">
+              {Object.entries(product.specs).map(([key, val]) => (
+                <div key={key}>
+                  <span className="block text-white font-bold">{val}</span>
+                  {key}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Add to Cart Button */}
+        <button 
+          onClick={handleAddToCart}
+          className="absolute bottom-3 right-3 bg-white text-black w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 z-30 cursor-pointer hover:bg-surf-accent shadow-lg"
+        >
+          <i className="ph-bold ph-plus text-lg"></i>
+        </button>
+      </div>
+
+      {/* Product Info */}
+      <div className="mt-2 space-y-1">
+        <h3 className="font-bold text-sm md:text-lg truncate group-hover:text-surf-accent">
+          {product.name}
+        </h3>
+        <p className="text-xs text-gray-500 uppercase tracking-widest">{product.category}</p>
+
+        <div className="flex items-center gap-2 text-xs md:text-sm font-mono mt-1 flex-wrap">
+          <span>${product.price}</span>
+          {product.memberPrice && (
+            <span className="text-surf-accent border border-surf-accent/30 px-1 rounded bg-surf-accent/10 text-[10px]">
+              ${product.memberPrice} Member
+            </span>
+          )}
+        </div>
+        
+        {/* Selected Size Display */}
+        {selectedSize && (
+          <p className="text-xs text-surf-accent font-mono">
+            Size: {selectedSize}
+          </p>
+        )}
+      </div>
+    </div>
+  )
+}
 
 // Ad breaks configuration
 const adBreaks = [
@@ -32,6 +171,7 @@ export default function Shop() {
   // --- 1. URL & FILTER STATE MANAGEMENT ---
   const [searchParams, setSearchParams] = useSearchParams()
   const categories = ['All', 'Surfboards', 'Men', 'Women', 'Groms', 'Accessories']
+  const { addToCart } = useCart()
   
   // Get category from URL, validate it, and use as initial state
   const getCategoryFromUrl = () => {
@@ -45,8 +185,10 @@ export default function Shop() {
 
   // Sync state when URL changes (Browser Back/Forward)
   useEffect(() => {
-    const urlCategory = getCategoryFromUrl()
-    setSelectedCategory(urlCategory)
+    const urlCategory = searchParams.get('category')
+    const validCategory = urlCategory && categories.includes(urlCategory) ? urlCategory : 'All'
+    setSelectedCategory(validCategory)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams])
 
   // Helper to update both URL and State when user clicks a pill
@@ -163,88 +305,7 @@ export default function Shop() {
         {/* Product Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2 md:gap-4 lg:gap-6 w-full">
           {filteredProducts.map((product, index) => {
-            
-            // Helper for borders
-            const getHoverColor = (cat) => {
-                if(cat === 'Surfboards') return 'group-hover:border-blue-500';
-                if(cat === 'Women') return 'group-hover:border-pink-500';
-                if(cat === 'Groms') return 'group-hover:border-yellow-500';
-                return 'group-hover:border-surf-accent/50';
-            }
-            const hoverColor = getHoverColor(product.category);
-
-            const productCard = (
-              <div
-                key={product.id}
-                className={`group col-span-1 ${product.type === 'board' ? 'lg:row-span-1' : ''}`}
-              >
-                {/* Card Container */}
-                <div
-                  className={`relative rounded-xl overflow-hidden border border-white/5 ${hoverColor} transition-all duration-300
-                    ${product.type === 'board'
-                      ? 'aspect-[2/3.5] md:aspect-[3/4] lg:aspect-[4/5]' // User's preferred aspect ratios
-                      : product.type === 'accessory'
-                        ? 'aspect-square'
-                        : 'aspect-[3/4.5] md:aspect-[3/4] lg:aspect-[3/4]'
-                    } bg-surf-card w-full`}
-                >
-                   {/* Background Logic: Real Image or Placeholder */}
-                   {product.image ? (
-                      <div className="absolute inset-0">
-                          <img src={product.image} alt={product.name} className="w-full h-full object-cover opacity-80 group-hover:scale-105 transition-transform duration-700" />
-                          <div className="absolute inset-0 bg-gradient-to-t from-surf-black via-transparent to-transparent opacity-90"></div>
-                      </div>
-                  ) : (
-                     <div className="absolute inset-0 bg-gray-800 flex items-center justify-center text-gray-600">
-                         <i className={`ph-fill ${product.icon} text-5xl md:text-6xl`}></i>
-                     </div>
-                  )}
-
-                  {/* Badge */}
-                  {product.badge && (
-                    <div className="absolute top-2 left-2 bg-surf-accent text-black text-[10px] font-bold px-2 py-1 uppercase rounded-sm z-30">
-                      {product.badge}
-                    </div>
-                  )}
-
-                  {/* Add to Cart Button */}
-                  <button className="absolute bottom-12 right-3 bg-white text-black w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 translate-y-3 group-hover:translate-y-0 transition-all duration-300 z-20 cursor-pointer">
-                    <i className="ph-bold ph-plus"></i>
-                  </button>
-
-                  {/* Board Specs Overlay */}
-                  {product.specs && (
-                    <div className="absolute bottom-0 left-0 right-0 p-3 md:p-4 bg-black/60 backdrop-blur-sm border-t border-white/10 translate-y-full group-hover:translate-y-0 transition-all text-[10px] font-mono z-10">
-                      <div className="grid grid-cols-3 gap-2 text-center text-gray-300">
-                        {Object.entries(product.specs).map(([key, val]) => (
-                          <div key={key}>
-                            <span className="block text-white font-bold">{val}</span>
-                            {key}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Product Info */}
-                <div className="mt-2 space-y-1">
-                  <h3 className="font-bold text-sm md:text-lg truncate group-hover:text-surf-accent">
-                    {product.name}
-                  </h3>
-                  <p className="text-xs text-gray-500 uppercase tracking-widest">{product.category}</p>
-
-                  <div className="flex items-center gap-2 text-xs md:text-sm font-mono mt-1 flex-wrap">
-                    <span>${product.price}</span>
-                    {product.memberPrice && (
-                      <span className="text-surf-accent border border-surf-accent/30 px-1 rounded bg-surf-accent/10 text-[10px]">
-                        ${product.memberPrice} Member
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )
+            const productCard = <ShopProductCard key={product.id} product={product} addToCart={addToCart} />
 
             // Inject ad break using your logic
             if ((index + 2) % 2 === 0 && selectedCategory === 'All') {
@@ -257,13 +318,13 @@ export default function Shop() {
                   {productCard}
 
                   {/* Ad Break */}
-                  <div className="col-span-1 aspect-[2/3.5] md:aspect-[3/4] lg:aspect-[4/5] relative rounded-xl overflow-hidden group">
+                  <div className="col-span-1 aspect-[2/3.5] md:aspect-3/4 lg:aspect-4/5 relative rounded-xl overflow-hidden group">
                     <img
                       src={currentAd.image}
                       className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:scale-105 transition-transform duration-700"
                       alt={currentAd.category}
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black to-transparent"></div>
+                    <div className="absolute inset-0 bg-linear-to-t from-black to-transparent"></div>
                     <div className="absolute bottom-4 md:bottom-6 left-4 md:left-6 max-w-xs">
                       <span className="text-surf-accent font-bold text-[10px] md:text-xs uppercase tracking-widest mb-2 block">{currentAd.category}</span>
                       <h3 className="font-display text-lg md:text-3xl uppercase mb-2 md:mb-4 leading-none">{currentAd.title}</h3>

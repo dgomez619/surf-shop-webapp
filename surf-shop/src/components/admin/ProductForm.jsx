@@ -1,15 +1,16 @@
 import { useState, useEffect } from 'react'
-import { db, auth } from '../../firebase'
+import { db, auth } from '../../firebase' // Removed .js extension
 import { doc, getDoc, addDoc, updateDoc, collection, serverTimestamp } from 'firebase/firestore'
 import { useNavigate, useParams, Link } from 'react-router-dom'
 import { onAuthStateChanged } from 'firebase/auth'
 
+const AVAILABLE_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL']
+
 export default function ProductForm() {
-  const { id } = useParams() // If ID exists, we are in EDIT mode
+  const { id } = useParams()
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
   
-  // Form State
   const [formData, setFormData] = useState({
     name: '',
     category: 'Men',
@@ -17,11 +18,11 @@ export default function ProductForm() {
     price: '',
     memberPrice: '',
     stock: 10,
-    image: '', // URL String
+    image: '', 
     description: '',
     badge: '',
-    type: 'apparel', // 'apparel', 'board', 'accessory'
-    // Specs (Only for boards)
+    type: 'apparel', 
+    sizes: [], // New Field
     specs: {
         length: '',
         vol: '',
@@ -29,23 +30,24 @@ export default function ProductForm() {
     }
   })
 
-  // Auth & Fetch Data Guard
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (!user) {
         navigate('/admin/login')
         return
       }
-
-      // If ID is present, fetch product data to populate form (Edit Mode)
       if (id) {
         setLoading(true)
         const docRef = doc(db, 'products', id)
         const docSnap = await getDoc(docRef)
         if (docSnap.exists()) {
             const data = docSnap.data()
-            // Merge defaults in case old data is missing fields
-            setFormData(prev => ({ ...prev, ...data })) 
+            setFormData(prev => ({ 
+                ...prev, 
+                ...data,
+                // Ensure sizes array exists if editing old data
+                sizes: data.sizes || [] 
+            })) 
         }
         setLoading(false)
       }
@@ -56,6 +58,18 @@ export default function ProductForm() {
   const handleChange = (e) => {
     const { name, value } = e.target
     setFormData(prev => ({ ...prev, [name]: value }))
+  }
+
+  // Handle Checkbox toggles for Sizes
+  const handleSizeToggle = (size) => {
+    setFormData(prev => {
+        const currentSizes = prev.sizes || []
+        if (currentSizes.includes(size)) {
+            return { ...prev, sizes: currentSizes.filter(s => s !== size) }
+        } else {
+            return { ...prev, sizes: [...currentSizes, size] }
+        }
+    })
   }
 
   const handleSpecChange = (e) => {
@@ -70,7 +84,6 @@ export default function ProductForm() {
     e.preventDefault()
     setLoading(true)
 
-    // Clean up data types before sending
     const payload = {
         ...formData,
         price: Number(formData.price),
@@ -81,10 +94,8 @@ export default function ProductForm() {
 
     try {
         if (id) {
-            // Update existing
             await updateDoc(doc(db, 'products', id), payload)
         } else {
-            // Create new
             payload.createdAt = serverTimestamp()
             await addDoc(collection(db, 'products'), payload)
         }
@@ -101,7 +112,6 @@ export default function ProductForm() {
     <div className="min-h-screen bg-surf-black text-white font-body bg-noise p-4 md:p-8">
         <div className="max-w-4xl mx-auto">
             
-            {/* Header */}
             <div className="flex items-center justify-between mb-8 border-b border-white/10 pb-4">
                 <div>
                     <h1 className="font-display text-3xl uppercase">{id ? 'Edit Product' : 'New Product'}</h1>
@@ -175,7 +185,30 @@ export default function ProductForm() {
                     </div>
                 </div>
 
-                {/* 3. Media */}
+                {/* 3. SIZES (New Section) */}
+                {formData.type === 'apparel' && (
+                    <div className="bg-surf-card p-6 rounded-xl border border-white/5 space-y-4">
+                        <h3 className="text-surf-accent font-bold uppercase text-xs tracking-widest mb-4">Available Sizes</h3>
+                        <div className="flex flex-wrap gap-3">
+                            {AVAILABLE_SIZES.map(size => (
+                                <button
+                                    key={size}
+                                    type="button"
+                                    onClick={() => handleSizeToggle(size)}
+                                    className={`w-10 h-10 rounded border text-sm font-bold transition-all ${
+                                        formData.sizes?.includes(size)
+                                        ? 'bg-surf-accent text-black border-surf-accent'
+                                        : 'bg-transparent text-gray-500 border-white/10 hover:border-white'
+                                    }`}
+                                >
+                                    {size}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* 4. Media */}
                 <div className="bg-surf-card p-6 rounded-xl border border-white/5 space-y-4">
                     <h3 className="text-surf-accent font-bold uppercase text-xs tracking-widest mb-4">Media</h3>
                     <div className="space-y-2">
@@ -189,7 +222,7 @@ export default function ProductForm() {
                     </div>
                 </div>
 
-                {/* 4. Board Specs (Conditional) */}
+                {/* 5. Board Specs */}
                 {formData.type === 'board' && (
                     <div className="bg-surf-card p-6 rounded-xl border border-blue-500/30 space-y-4">
                         <h3 className="text-blue-400 font-bold uppercase text-xs tracking-widest mb-4">Surfboard Specs</h3>
@@ -214,7 +247,7 @@ export default function ProductForm() {
                     disabled={loading}
                     className="w-full bg-surf-accent text-black font-bold uppercase py-4 rounded tracking-widest hover:bg-white transition-colors text-lg"
                 >
-                    {loading ? 'Saving...' : (id ? 'Update Product' : 'Create Product')}
+                    {loading ? 'Saving...' : (id ? 'Update Product' : 'Save Product')}
                 </button>
 
             </form>

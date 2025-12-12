@@ -1,8 +1,12 @@
 import { Outlet, Link } from 'react-router-dom';
 import { useState, useEffect, useRef } from 'react';
+import { useCart } from '../context/CartContext';
+
+// Global App Component
+import CartDrawer from '../components/admin/CartDrawer.jsx';
 
 export default function ClientLayout() {
-  const [cartCount, _setCartCount] = useState(2); // Mock state
+  const { cartCount, toggleCart } = useCart();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const mobileMenuRef = useRef(null);
 
@@ -65,11 +69,17 @@ export default function ClientLayout() {
           {/* Actions */}
           <div className="flex items-center gap-4">
             <button className="hover:text-surf-accent transition-colors"><i className="ph text-2xl ph-magnifying-glass"></i></button>
-            <button className="hover:text-surf-accent transition-colors relative">
+            <button 
+              onClick={toggleCart}
+              className="hover:text-surf-accent transition-colors relative"
+              aria-label="Open cart"
+            >
               <i className="ph text-2xl ph-bag"></i>
-              <span className="absolute -top-1 -right-1 w-4 h-4 bg-surf-accent text-black text-[10px] flex items-center justify-center rounded-full font-bold">
-                {cartCount}
-              </span>
+              {cartCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 bg-surf-accent text-black text-[10px] flex items-center justify-center rounded-full font-bold">
+                  {cartCount}
+                </span>
+              )}
             </button>
             <button 
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -146,6 +156,7 @@ export default function ClientLayout() {
             </div>
         </div>
       </footer>
+      <CartDrawer />
     </div>
   );
 }
