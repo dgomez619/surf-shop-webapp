@@ -12,11 +12,13 @@ import Shop from './pages/client/Shop';
 import Rentals from './pages/client/Rentals';
 import Surfshack from './pages/client/Surfshack';
 import Society from './pages/client/Society';
+import Checkout from './pages/client/Checkout';
 
 // Admin Pages
 import Dashboard from './pages/admin/Dashboard';
 import FleetDashboard from './pages/admin/FleetDashboard';
 import ShackManager from './pages/admin/ShackManager';
+import OrderManager from './pages/admin/OrderManager';
 
 // Admin Components (Forms)
 import ProductForm from './components/admin/ProductForm';
@@ -41,6 +43,7 @@ function App() {
           <Route path="rentals" element={<Rentals />} />
           <Route path="surfshack" element={<Surfshack />} />
           <Route path="society" element={<Society />} />
+          <Route path="checkout" element={<Checkout />} />
           {/* Add more client routes here later, e.g., <Route path="about" ... /> */}
         </Route>
 
@@ -66,6 +69,9 @@ function App() {
           
           {/* Shack Manager */}
           <Route path="shack" element={<ShackManager />} />
+
+          {/* Order Manager */}
+          <Route path="orders" element={<OrderManager />} />
         </Route>
 
         {/* ////////////////////////////////////////////////////////////////////////////// */}

@@ -1,3 +1,25 @@
-work on the board renting system. 
+work on the board renting system. (DONE)
 
-work on the add to cart function for the shop. 
+work on the add to cart function for the shop. (DONE)
+
+Use the same logic of "added to cart" from the rental page, on the "Shop" page. badge that comes saying "added to cart" Cart Drawer should not come out automatically after adding to cart. 
+
+*Make sure that in CartDrawer user cannot increment items quantity if that quantity is not available in the database.
+
+Think of a way to incomporate same day hourly board rental, or a future day hourly board rental. 
+
+Look into using EmailJS to send receipt of purchase. *it probably work directly with Stripe*
+
+In the Admin Order - Lets make the REVENUE display the DAILY REVENUE, and reset every day. 
+
+Orders marked as completed or ship should reduce the Stock quantity in Iventory admin page. 
+
+Create a method to mark rental as returned and update the rental page so it shows it as available again. 
+
+Create notification method on admin side.
+
+Fix active navigation tab on admin side. 
+
+In the "Admin/Bookings" created method to undo "returned" if clicked by accident. 
+
+Shipping Address not showing up completely in the "Recen Transactions" Admin

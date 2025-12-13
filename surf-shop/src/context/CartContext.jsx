@@ -136,7 +136,7 @@ export const CartProvider = ({ children }) => {
       return [...prevItems, newItem];
     });
 
-    setIsCartOpen(true);
+    // Cart will only open when user clicks the bag icon
   };
 
   // Remove item from cart by cartItemId

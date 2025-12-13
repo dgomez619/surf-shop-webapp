@@ -29,6 +29,10 @@ export default {
           '0%': { transform: 'translateX(0%)' },
           '100%': { transform: 'translateX(-50%)' },
         },
+        'bounce-in': {
+          '0%': { opacity: '0', transform: 'translateY(20px) translateX(-50%)' },
+          '100%': { opacity: '1', transform: 'translateY(0) translateX(-50%)' }
+        }
       },
     },
   },

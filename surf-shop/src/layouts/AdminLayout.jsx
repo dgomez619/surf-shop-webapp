@@ -36,6 +36,9 @@ const AdminLayout = () => {
             <Link to="/admin/shack" className="font-display text-lg uppercase tracking-wide text-gray-500 hover:text-surf-accent transition-colors py-2">
               Shack
             </Link>
+            <Link to="/admin/orders" className="font-display text-lg uppercase tracking-wide text-gray-500 hover:text-surf-accent transition-colors py-2">
+              Orders
+            </Link>
           </nav>
         </div>
         

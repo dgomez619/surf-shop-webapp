@@ -1,4 +1,4 @@
-import { useCart } from '../../context/CartContext'; // Removed .jsx extension
+import { useCart } from '../../context/CartContext.jsx'; // Added .jsx extension
 import { Link } from 'react-router-dom';
 
 // Helper: Calculate number of days between two dates
@@ -222,12 +222,15 @@ const CartDrawer = () => {
               </span>
             </div>
 
-            <button
+            {/* CHANGED FROM BUTTON TO LINK */}
+            <Link
+              to="/checkout"
+              onClick={closeCart}
               className="block w-full bg-surf-accent text-black font-bold uppercase tracking-widest py-4 rounded text-center hover:bg-white transition-colors cursor-pointer flex items-center justify-center gap-2"
             >
               Checkout
               <i className="ph-bold ph-arrow-right"></i>
-            </button>
+            </Link>
 
             <p className="text-center text-[10px] text-gray-600 uppercase tracking-widest">
                 Tax calculated at next step
