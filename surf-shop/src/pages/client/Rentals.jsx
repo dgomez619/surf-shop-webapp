@@ -41,6 +41,7 @@ export default function Rentals() {
   
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [showDemoOnly, setShowDemoOnly] = useState(false);
+  const [showUpsell, setShowUpsell] = useState(true);
   
   const [dateRange, setDateRange] = useState({
     start: formatDate(new Date()),
@@ -364,15 +365,30 @@ export default function Rentals() {
       </main>
 
       {/* FOOTER UPSELL */}
-      <div className="fixed bottom-6 left-0 right-0 px-4 z-20 pointer-events-none">
-        <div className="max-w-md mx-auto bg-surf-accent text-black p-4 rounded-lg shadow-2xl pointer-events-auto flex items-center justify-between transform transition-transform hover:scale-105 cursor-pointer border border-black group">
-            <div>
-                <p className="font-bold uppercase text-sm group-hover:underline">Unlock Member Pricing</p>
-                <p className="text-xs opacity-80">Join the Surf Society today.</p>
-            </div>
-            <button className="bg-black text-white px-4 py-2 rounded text-xs font-bold uppercase cursor-pointer">Join</button>
+      {showUpsell && (
+        <div className="fixed bottom-6 left-0 right-0 px-4 z-20 pointer-events-none">
+          <div className="max-w-md mx-auto bg-surf-accent text-black p-4 rounded-lg shadow-2xl pointer-events-auto flex items-center justify-between transform transition-transform hover:scale-105 cursor-pointer border border-black group relative">
+              <div>
+                  <p className="font-bold uppercase text-sm group-hover:underline">Unlock Member Pricing</p>
+                  <p className="text-xs opacity-80">Join the Surf Society today.</p>
+              </div>
+              <div className="flex items-center gap-2">
+                  <button className="bg-black text-white px-4 py-2 rounded text-xs font-bold uppercase cursor-pointer">Join</button>
+                  <button 
+                      onClick={(e) => {
+                          e.stopPropagation();
+                          setShowUpsell(false);
+                      }}
+                      className="bg-black/20 hover:bg-black/40 text-black p-1.5 rounded transition-colors"
+                      aria-label="Dismiss"
+                  >
+                      <i className="ph-bold ph-x text-sm"></i>
+                  </button>
+              </div>
+          </div>
         </div>
-      </div>
+      )}
+
 
     </div>
   )

@@ -4,8 +4,23 @@ import { db } from '../../firebase' // Reverted to extension-less import
 import { collection, getDocs, query, orderBy } from 'firebase/firestore'
 import { useCart } from '../../context/CartContext'
 
+// Toast Notification Component
+const Toast = ({ message, onClose }) => {
+    useEffect(() => {
+        const timer = setTimeout(onClose, 3000);
+        return () => clearTimeout(timer);
+    }, [onClose]);
+
+    return (
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 bg-surf-accent text-black px-6 py-3 rounded-full font-bold shadow-[0_0_20px_rgba(196,249,52,0.3)] animate-bounce-in flex items-center gap-2">
+            <i className="ph-bold ph-check-circle text-xl"></i>
+            {message}
+        </div>
+    );
+};
+
 // ShopProductCard Component - Manages individual product with size selection
-const ShopProductCard = ({ product, addToCart }) => {
+const ShopProductCard = ({ product, addToCart, onAddSuccess, isOutOfStock }) => {
   const [selectedSize, setSelectedSize] = useState(null)
   
   // Helper for border hover colors
@@ -17,11 +32,26 @@ const ShopProductCard = ({ product, addToCart }) => {
   }
 
   const handleAddToCart = () => {
+    // Prevent adding out of stock items
+    if (isOutOfStock) {
+      alert('This item is currently out of stock.')
+      return
+    }
+
     // Check if product requires size selection
     if (product.sizes && product.sizes.length > 0) {
       if (!selectedSize) {
         alert('Please select a size.')
         return
+      }
+      
+      // Check size-specific stock
+      if (product.stockBySize) {
+        const sizeStock = product.stockBySize[selectedSize] || 0
+        if (sizeStock === 0) {
+          alert(`Size ${selectedSize} is currently out of stock.`)
+          return
+        }
       }
     }
 
@@ -31,6 +61,9 @@ const ShopProductCard = ({ product, addToCart }) => {
       selectedSize: selectedSize || undefined,
       type: 'shop' // Mark as shop product (not rental)
     })
+    
+    // Trigger success toast
+    onAddSuccess(product.name)
   }
 
   const hoverColor = getHoverColor(product.category)
@@ -45,7 +78,7 @@ const ShopProductCard = ({ product, addToCart }) => {
             : product.type === 'accessory'
               ? 'aspect-square'
               : 'aspect-[3/4.5] md:aspect-3/4 lg:aspect-3/4'
-          } bg-surf-card w-full`}
+          } bg-surf-card w-full ${isOutOfStock ? 'opacity-60' : ''}`}
       >
         {/* Background Logic: Real Image or Placeholder */}
         {product.image ? (
@@ -53,13 +86,25 @@ const ShopProductCard = ({ product, addToCart }) => {
             <img 
               src={product.image} 
               alt={product.name} 
-              className="w-full h-full object-cover opacity-80 group-hover:scale-105 transition-transform duration-700" 
+              className={`w-full h-full object-cover opacity-80 group-hover:scale-105 transition-transform duration-700 ${isOutOfStock ? 'grayscale' : ''}`} 
             />
             <div className="absolute inset-0 bg-linear-to-t from-surf-black via-transparent to-transparent opacity-90"></div>
           </div>
         ) : (
           <div className="absolute inset-0 bg-gray-800 flex items-center justify-center text-gray-600">
             <i className={`ph-fill ${product.icon} text-5xl md:text-6xl`}></i>
+          </div>
+        )}
+
+        {/* Out of Stock Overlay */}
+        {isOutOfStock && (
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-40">
+            <div className="text-center">
+              <div className="bg-red-500 text-white px-6 py-3 font-bold uppercase text-sm md:text-base rotate-[-12deg] border-2 border-white shadow-xl inline-block mb-2">
+                Out of Stock
+              </div>
+              <p className="text-xs text-gray-400 mt-2">Check back soon</p>
+            </div>
           </div>
         )}
 
@@ -71,24 +116,35 @@ const ShopProductCard = ({ product, addToCart }) => {
         )}
 
         {/* Size Selection (if applicable) */}
-        {product.sizes && product.sizes.length > 0 && (
+        {product.sizes && product.sizes.length > 0 && !isOutOfStock && (
           <div className="absolute top-2 right-2 flex gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity z-30">
-            {product.sizes.map((size) => (
-              <button
-                key={size}
-                onClick={(e) => {
-                  e.stopPropagation()
-                  setSelectedSize(size)
-                }}
-                className={`w-8 h-8 rounded border text-xs font-bold transition-all ${
-                  selectedSize === size
-                    ? 'bg-surf-accent text-black border-surf-accent'
-                    : 'bg-black/60 text-white border-white/30 hover:border-surf-accent'
-                }`}
-              >
-                {size}
-              </button>
-            ))}
+            {product.sizes.map((size) => {
+              const sizeStock = product.stockBySize?.[size] || 0
+              const isSizeOutOfStock = sizeStock === 0
+              
+              return (
+                <button
+                  key={size}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    if (!isSizeOutOfStock) {
+                      setSelectedSize(size)
+                    }
+                  }}
+                  disabled={isSizeOutOfStock}
+                  className={`w-8 h-8 rounded border text-xs font-bold transition-all relative ${
+                    isSizeOutOfStock
+                      ? 'bg-gray-800 text-gray-600 border-gray-700 cursor-not-allowed line-through'
+                      : selectedSize === size
+                        ? 'bg-surf-accent text-black border-surf-accent'
+                        : 'bg-black/60 text-white border-white/30 hover:border-surf-accent cursor-pointer'
+                  }`}
+                  title={isSizeOutOfStock ? `Size ${size} out of stock` : `${sizeStock} in stock`}
+                >
+                  {size}
+                </button>
+              )
+            })}
           </div>
         )}
 
@@ -109,9 +165,18 @@ const ShopProductCard = ({ product, addToCart }) => {
         {/* Add to Cart Button */}
         <button 
           onClick={handleAddToCart}
-          className="absolute bottom-3 right-3 bg-white text-black w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all duration-300 z-30 cursor-pointer hover:bg-surf-accent shadow-lg"
+          disabled={isOutOfStock}
+          className={`absolute bottom-3 right-3 w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all duration-300 z-30 shadow-lg ${
+            isOutOfStock 
+              ? 'bg-gray-600 text-gray-400 cursor-not-allowed' 
+              : 'bg-white text-black hover:bg-surf-accent cursor-pointer'
+          }`}
         >
-          <i className="ph-bold ph-plus text-lg"></i>
+          {isOutOfStock ? (
+            <i className="ph-bold ph-x text-lg"></i>
+          ) : (
+            <i className="ph-bold ph-plus text-lg"></i>
+          )}
         </button>
       </div>
 
@@ -172,6 +237,7 @@ export default function Shop() {
   const [searchParams, setSearchParams] = useSearchParams()
   const categories = ['All', 'Surfboards', 'Men', 'Women', 'Groms', 'Accessories']
   const { addToCart } = useCart()
+  const [toastMsg, setToastMsg] = useState(null)
   
   // Get category from URL, validate it, and use as initial state
   const getCategoryFromUrl = () => {
@@ -243,6 +309,8 @@ export default function Shop() {
   return (
     <div className="bg-surf-black min-h-screen text-white font-body bg-noise">
 
+      {toastMsg && <Toast message={toastMsg} onClose={() => setToastMsg(null)} />}
+
       <br />
       <br />
       {/* Marquee Banner - User's Full width Hack */}
@@ -305,7 +373,27 @@ export default function Shop() {
         {/* Product Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2 md:gap-4 lg:gap-6 w-full">
           {filteredProducts.map((product, index) => {
-            const productCard = <ShopProductCard key={product.id} product={product} addToCart={addToCart} />
+            // Check if product is out of stock
+            let isOutOfStock = false
+            if (product.sizes && product.sizes.length > 0 && product.stockBySize) {
+              // For sized products, check if ALL sizes are out of stock
+              const allSizesOutOfStock = product.sizes.every(size => {
+                const sizeStock = product.stockBySize[size] || 0
+                return sizeStock === 0
+              })
+              isOutOfStock = allSizesOutOfStock
+            } else {
+              // For non-sized products, check general stock
+              isOutOfStock = !product.stock || product.stock === 0
+            }
+            
+            const productCard = <ShopProductCard 
+              key={product.id} 
+              product={product} 
+              addToCart={addToCart} 
+              onAddSuccess={(name) => setToastMsg(`Added ${name} to Stash`)}
+              isOutOfStock={isOutOfStock}
+            />
 
             // Inject ad break using your logic
             if ((index + 2) % 2 === 0 && selectedCategory === 'All') {

@@ -118,7 +118,33 @@ export default function Dashboard() {
                                             {product.memberPrice && <span className="block text-[10px] text-surf-accent">Member: ${product.memberPrice}</span>}
                                         </td>
                                         <td className="p-4">
-                                            {product.stock > 0 ? (
+                                            {product.sizes && product.sizes.length > 0 && product.stockBySize ? (
+                                                <div className="space-y-1">
+                                                    <div className="text-green-400 font-mono font-bold">
+                                                        {product.stock} total
+                                                    </div>
+                                                    <div className="flex flex-wrap gap-1">
+                                                        {product.sizes.map(size => {
+                                                            const sizeStock = product.stockBySize[size] || 0
+                                                            return (
+                                                                <span
+                                                                    key={size}
+                                                                    className={`text-[10px] px-1.5 py-0.5 rounded border font-mono ${
+                                                                        sizeStock === 0
+                                                                            ? 'text-red-400 border-red-500/30 bg-red-500/10'
+                                                                            : sizeStock < 3
+                                                                                ? 'text-yellow-400 border-yellow-500/30 bg-yellow-500/10'
+                                                                                : 'text-gray-400 border-white/10 bg-white/5'
+                                                                    }`}
+                                                                    title={`Size ${size}: ${sizeStock} in stock`}
+                                                                >
+                                                                    {size}: {sizeStock}
+                                                                </span>
+                                                            )
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            ) : product.stock > 0 ? (
                                                 <span className="text-green-400 font-mono">{product.stock} in stock</span>
                                             ) : (
                                                 <span className="text-red-500 font-bold uppercase text-xs">Out of Stock</span>

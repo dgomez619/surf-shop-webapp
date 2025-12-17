@@ -18,6 +18,7 @@ export default function ProductForm() {
     price: '',
     memberPrice: '',
     stock: 10,
+    stockBySize: {}, // Size-specific inventory
     image: '', 
     description: '',
     badge: '',
@@ -46,7 +47,9 @@ export default function ProductForm() {
                 ...prev, 
                 ...data,
                 // Ensure sizes array exists if editing old data
-                sizes: data.sizes || [] 
+                sizes: data.sizes || [],
+                // Ensure stockBySize exists if editing old data
+                stockBySize: data.stockBySize || {}
             })) 
         }
         setLoading(false)
@@ -64,12 +67,37 @@ export default function ProductForm() {
   const handleSizeToggle = (size) => {
     setFormData(prev => {
         const currentSizes = prev.sizes || []
+        const newStockBySize = { ...prev.stockBySize }
+        
         if (currentSizes.includes(size)) {
-            return { ...prev, sizes: currentSizes.filter(s => s !== size) }
+            // Remove size
+            delete newStockBySize[size]
+            return { 
+                ...prev, 
+                sizes: currentSizes.filter(s => s !== size),
+                stockBySize: newStockBySize
+            }
         } else {
-            return { ...prev, sizes: [...currentSizes, size] }
+            // Add size with default stock of 10
+            newStockBySize[size] = 10
+            return { 
+                ...prev, 
+                sizes: [...currentSizes, size],
+                stockBySize: newStockBySize
+            }
         }
     })
+  }
+
+  // Handle stock quantity change for specific size
+  const handleSizeStockChange = (size, quantity) => {
+    setFormData(prev => ({
+        ...prev,
+        stockBySize: {
+            ...prev.stockBySize,
+            [size]: Number(quantity) || 0
+        }
+    }))
   }
 
   const handleSpecChange = (e) => {
@@ -84,11 +112,17 @@ export default function ProductForm() {
     e.preventDefault()
     setLoading(true)
 
+    // Calculate total stock from stockBySize if product has sizes
+    let totalStock = Number(formData.stock)
+    if (formData.sizes && formData.sizes.length > 0) {
+        totalStock = Object.values(formData.stockBySize).reduce((sum, qty) => sum + Number(qty || 0), 0)
+    }
+
     const payload = {
         ...formData,
         price: Number(formData.price),
         memberPrice: formData.memberPrice ? Number(formData.memberPrice) : null,
-        stock: Number(formData.stock),
+        stock: totalStock, // Auto-synced from stockBySize if applicable
         updatedAt: serverTimestamp()
     }
 
@@ -167,10 +201,13 @@ export default function ProductForm() {
                                 <option value="accessory">Accessory</option>
                             </select>
                         </div>
-                         <div className="space-y-2">
-                            <label className="text-xs uppercase font-bold text-gray-500">Stock</label>
-                            <input type="number" name="stock" value={formData.stock} onChange={handleChange} className="w-full bg-black/30 border border-white/10 rounded p-3 focus:border-surf-accent outline-none" />
-                        </div>
+                         {/* Only show general stock for non-apparel or apparel without sizes */}
+                         {(formData.type !== 'apparel' || formData.sizes?.length === 0) && (
+                            <div className="space-y-2">
+                                <label className="text-xs uppercase font-bold text-gray-500">Stock</label>
+                                <input type="number" name="stock" value={formData.stock} onChange={handleChange} className="w-full bg-black/30 border border-white/10 rounded p-3 focus:border-surf-accent outline-none" />
+                            </div>
+                         )}
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
@@ -185,11 +222,20 @@ export default function ProductForm() {
                     </div>
                 </div>
 
-                {/* 3. SIZES (New Section) */}
+                {/* 3. SIZES & STOCK (Updated Section) */}
                 {formData.type === 'apparel' && (
                     <div className="bg-surf-card p-6 rounded-xl border border-white/5 space-y-4">
-                        <h3 className="text-surf-accent font-bold uppercase text-xs tracking-widest mb-4">Available Sizes</h3>
-                        <div className="flex flex-wrap gap-3">
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-surf-accent font-bold uppercase text-xs tracking-widest">Size-Specific Inventory</h3>
+                            <div className="text-xs text-gray-400">
+                                Total Stock: <span className="text-surf-accent font-bold">
+                                    {Object.values(formData.stockBySize).reduce((sum, qty) => sum + Number(qty || 0), 0)}
+                                </span>
+                            </div>
+                        </div>
+                        
+                        {/* Size Selection */}
+                        <div className="flex flex-wrap gap-3 mb-4">
                             {AVAILABLE_SIZES.map(size => (
                                 <button
                                     key={size}
@@ -205,6 +251,31 @@ export default function ProductForm() {
                                 </button>
                             ))}
                         </div>
+
+                        {/* Stock Quantity Inputs for Selected Sizes */}
+                        {formData.sizes && formData.sizes.length > 0 && (
+                            <div className="space-y-3 pt-4 border-t border-white/10">
+                                <p className="text-xs uppercase font-bold text-gray-500 mb-3">Stock Quantities</p>
+                                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                                    {formData.sizes.map(size => (
+                                        <div key={size} className="space-y-1">
+                                            <label className="text-xs font-bold text-gray-400">Size {size}</label>
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                value={formData.stockBySize[size] || 0}
+                                                onChange={(e) => handleSizeStockChange(size, e.target.value)}
+                                                className="w-full bg-black/30 border border-white/10 rounded p-2 text-center focus:border-surf-accent outline-none"
+                                            />
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {formData.sizes?.length === 0 && (
+                            <p className="text-sm text-gray-500 italic">Select sizes above to manage inventory</p>
+                        )}
                     </div>
                 )}
 

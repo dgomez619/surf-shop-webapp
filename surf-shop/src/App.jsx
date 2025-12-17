@@ -13,6 +13,7 @@ import Rentals from './pages/client/Rentals';
 import Surfshack from './pages/client/Surfshack';
 import Society from './pages/client/Society';
 import Checkout from './pages/client/Checkout';
+import OrderSuccess from './pages/client/OrderSuccess';
 
 // Admin Pages
 import Dashboard from './pages/admin/Dashboard';
@@ -44,6 +45,7 @@ function App() {
           <Route path="surfshack" element={<Surfshack />} />
           <Route path="society" element={<Society />} />
           <Route path="checkout" element={<Checkout />} />
+          <Route path="order-success/:orderId" element={<OrderSuccess />} />
           {/* Add more client routes here later, e.g., <Route path="about" ... /> */}
         </Route>
 

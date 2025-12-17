@@ -15,10 +15,16 @@ const calculateDays = (startDate, endDate) => {
 const formatDateRange = (startDate, endDate) => {
   if (!startDate || !endDate) return 'Date not set';
   
-  const start = new Date(startDate);
-  const end = new Date(endDate);
+  // Parse as local date to avoid timezone shifting
+  // When date string is "2024-12-15", create Date with local interpretation
+  const parseLocalDate = (dateStr) => {
+    const [year, month, day] = dateStr.split('-').map(Number);
+    return new Date(year, month - 1, day); // month is 0-indexed
+  };
   
-  // Adjusted for potential timezone offsets if needed, but standard method is usually fine for display
+  const start = parseLocalDate(startDate);
+  const end = parseLocalDate(endDate);
+  
   const options = { month: 'short', day: 'numeric' };
   const startFormatted = start.toLocaleDateString('en-US', options);
   const endFormatted = end.toLocaleDateString('en-US', options);

@@ -1,13 +1,14 @@
 import { useState } from 'react'
 import { useCart } from '../../context/CartContext'
 import { db } from '../../firebase'
-import { collection, writeBatch, doc, serverTimestamp } from 'firebase/firestore'
+import { collection, writeBatch, doc, serverTimestamp, increment, getDoc, query, where, getDocs } from 'firebase/firestore'
 import { useNavigate, Link } from 'react-router-dom'
 
 export default function Checkout() {
   const { cartItems, cartTotal, clearCart } = useCart()
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
   
   const [formData, setFormData] = useState({
     email: '',
@@ -37,64 +38,209 @@ export default function Checkout() {
   const handleCheckout = async (e) => {
     e.preventDefault()
     setLoading(true)
+    setError(null)
 
     try {
+        // === STEP 1: PRE-VALIDATE AVAILABILITY & PRICES ===
+        const validationErrors = []
+        const validatedItems = []
+
+        for (const cartItem of cartItems) {
+            if (cartItem.type === 'rental') {
+                // Validate rental availability
+                const rentalDoc = await getDoc(doc(db, 'rentals', cartItem.id))
+                if (!rentalDoc.exists()) {
+                    validationErrors.push(`${cartItem.name} is no longer available`)
+                    continue
+                }
+
+                const rentalData = rentalDoc.data()
+                
+                // Check if still active
+                if (rentalData.status !== 'active') {
+                    validationErrors.push(`${cartItem.name} is currently unavailable (status: ${rentalData.status})`)
+                    continue
+                }
+
+                // Check current bookings for date conflicts
+                const bookingsQuery = query(
+                    collection(db, 'bookings'),
+                    where('rentalId', '==', cartItem.id)
+                )
+                const bookingsSnap = await getDocs(bookingsQuery)
+                
+                const conflictCount = bookingsSnap.docs.filter(bookingDoc => {
+                    const booking = bookingDoc.data()
+                    const bookingStart = new Date(booking.dateRange.start)
+                    const bookingEnd = new Date(booking.dateRange.end)
+                    const requestStart = new Date(cartItem.dateRange.start)
+                    const requestEnd = new Date(cartItem.dateRange.end)
+                    
+                    return requestStart < bookingEnd && requestEnd > bookingStart
+                }).length
+
+                const availableStock = rentalData.stock - conflictCount
+
+                if (availableStock < cartItem.quantity) {
+                    validationErrors.push(`${cartItem.name}: Only ${availableStock} available for selected dates (you requested ${cartItem.quantity})`)
+                    continue
+                }
+
+                // Get current rate
+                const currentRate = rentalData.rates?.daily || cartItem.price
+                validatedItems.push({
+                    ...cartItem,
+                    price: currentRate,
+                    dailyRate: currentRate,
+                    verifiedStock: availableStock,
+                    // Ensure days is set
+                    days: cartItem.days || 1
+                })
+
+            } else if (cartItem.type === 'shop') {
+                // Validate shop product availability
+                const productDoc = await getDoc(doc(db, 'products', cartItem.id))
+                if (!productDoc.exists()) {
+                    validationErrors.push(`${cartItem.name} is no longer available`)
+                    continue
+                }
+
+                const productData = productDoc.data()
+                
+                // Check size-specific stock if product has size selected
+                if (cartItem.selectedSize && productData.stockBySize) {
+                    const sizeStock = productData.stockBySize[cartItem.selectedSize] || 0
+                    
+                    if (sizeStock === 0) {
+                        validationErrors.push(`${cartItem.name} (Size ${cartItem.selectedSize}): Currently out of stock`)
+                        continue
+                    } else if (sizeStock < cartItem.quantity) {
+                        validationErrors.push(`${cartItem.name} (Size ${cartItem.selectedSize}): Only ${sizeStock} in stock (you requested ${cartItem.quantity})`)
+                        continue
+                    }
+                } else {
+                    // General stock check for non-sized products
+                    if (productData.stock === 0) {
+                        validationErrors.push(`${cartItem.name}: Item currently out of stock`)
+                        continue
+                    } else if (productData.stock < cartItem.quantity) {
+                        validationErrors.push(`${cartItem.name}: Only ${productData.stock} in stock (you requested ${cartItem.quantity})`)
+                        continue
+                    }
+                }
+
+                // Get current price
+                const currentPrice = productData.price || cartItem.price
+                validatedItems.push({
+                    ...cartItem,
+                    price: currentPrice,
+                    verifiedStock: cartItem.selectedSize && productData.stockBySize 
+                        ? productData.stockBySize[cartItem.selectedSize]
+                        : productData.stock
+                })
+            }
+        }
+
+        // If any validation errors, stop checkout
+        if (validationErrors.length > 0) {
+            setError(validationErrors.join('. '))
+            setLoading(false)
+            return
+        }
+
+        // === STEP 2: CALCULATE TOTALS WITH VALIDATED PRICES ===
+        const TAX_RATE = 0.08
+        const subtotal = validatedItems.reduce((sum, item) => {
+            if (item.type === 'rental') {
+                return sum + (item.price * (item.days || 1) * item.quantity)
+            }
+            return sum + (item.price * item.quantity)
+        }, 0)
+        const tax = subtotal * TAX_RATE
+        const total = subtotal + tax
+
+        // === STEP 3: CREATE BATCH TRANSACTION ===
         const batch = writeBatch(db)
         
-        // 1. Create the Order Reference
         const orderRef = doc(collection(db, 'orders'))
         const orderId = orderRef.id
 
-        // 2. Prepare Order Data
+        // Order data with validated items and complete pricing
         const orderData = {
             orderId,
             customer: {
                 email: formData.email,
                 name: `${formData.firstName} ${formData.lastName}`,
-                address: formData.address
+                address: formData.address,
+                city: formData.city,
+                zip: formData.zip
             },
-            items: cartItems,
-            total: cartTotal,
-            status: 'paid', // Simulating successful payment
+            items: validatedItems,
+            subtotal,
+            tax,
+            taxRate: TAX_RATE,
+            total,
+            status: 'paid',
             createdAt: serverTimestamp()
         }
 
         batch.set(orderRef, orderData)
 
-        // 3. Handle Side Effects (Bookings & Stock)
-        cartItems.forEach(item => {
+        // === STEP 4: HANDLE SIDE EFFECTS ===
+        validatedItems.forEach(item => {
             
-            // A. If it's a Rental -> Create a Booking Block
+            // A. RENTALS: Create booking(s) with quantity
             if (item.type === 'rental') {
-                const bookingRef = doc(collection(db, 'bookings'))
-                batch.set(bookingRef, {
-                    orderId,
-                    rentalId: item.id, // ID of the asset
-                    itemName: item.name,
-                    dateRange: item.dateRange, // { start, end }
-                    customerName: `${formData.firstName} ${formData.lastName}`,
-                    status: 'confirmed',
-                    createdAt: serverTimestamp()
-                })
+                // Create one booking per quantity unit
+                for (let i = 0; i < item.quantity; i++) {
+                    const bookingRef = doc(collection(db, 'bookings'))
+                    batch.set(bookingRef, {
+                        orderId,
+                        rentalId: item.id,
+                        boardId: item.id, // Alias for backward compatibility
+                        itemName: item.name,
+                        dateRange: item.dateRange,
+                        customerName: `${formData.firstName} ${formData.lastName}`,
+                        customerEmail: formData.email,
+                        quantity: 1, // Each booking represents 1 unit
+                        unitNumber: i + 1, // Track which unit (1 of 2, 2 of 2, etc.)
+                        totalUnits: item.quantity,
+                        status: 'confirmed',
+                        createdAt: serverTimestamp()
+                    })
+                }
             }
 
-            // B. If it's a Product -> Decrement Stock (Optional logic for later)
-            // Ideally, you would read the current stock and decrement it here.
-            // For MVP, we are skipping the complex "read-modify-write" stock logic 
-            // to avoid race conditions without Cloud Functions.
+            // B. SHOP PRODUCTS: Decrement stock atomically
+            if (item.type === 'shop') {
+                const productRef = doc(db, 'products', item.id)
+                
+                if (item.selectedSize && item.stockBySize) {
+                    // Decrement size-specific stock
+                    batch.update(productRef, {
+                        [`stockBySize.${item.selectedSize}`]: increment(-item.quantity),
+                        // Also decrement total stock
+                        stock: increment(-item.quantity)
+                    })
+                } else {
+                    // Decrement general stock for non-sized products
+                    batch.update(productRef, {
+                        stock: increment(-item.quantity)
+                    })
+                }
+            }
         })
 
-        // 4. Commit All Changes
+        // === STEP 5: COMMIT TRANSACTION ===
         await batch.commit()
 
-        // 5. Success
+        // === STEP 6: SUCCESS ===
         clearCart()
-        alert("Order placed successfully! Surfs up.")
-        navigate('/') // Or to a /success page
+        navigate(`/order-success/${orderId}`)
 
     } catch (err) {
         console.error("Checkout Error:", err)
-        alert("Payment failed. Please try again.")
+        setError(`Payment processing failed: ${err.message}. Please try again.`)
     } finally {
         setLoading(false)
     }
@@ -104,6 +250,17 @@ export default function Checkout() {
     <div className="min-h-screen bg-surf-black text-white font-body bg-noise pt-24 pb-12 px-4">
         <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12">
             
+            {/* ERROR MESSAGE */}
+            {error && (
+                <div className="lg:col-span-2 bg-red-500/20 border border-red-500 rounded-lg p-4 flex items-start gap-3">
+                    <i className="ph-bold ph-warning text-2xl text-red-500"></i>
+                    <div>
+                        <p className="font-bold text-red-400 mb-1">Checkout Error</p>
+                        <p className="text-sm text-red-300">{error}</p>
+                    </div>
+                </div>
+            )}
+
             {/* LEFT COLUMN: FORM */}
             <div>
                 <div className="mb-8">
@@ -173,6 +330,31 @@ export default function Checkout() {
                     <button disabled={loading} className="w-full bg-surf-accent text-black font-bold uppercase py-4 rounded tracking-widest hover:bg-white transition-colors text-lg cursor-pointer">
                         {loading ? 'Processing...' : `Pay $${cartTotal.toLocaleString()}`}
                     </button>
+
+                    {/* Order Actions */}
+                    <div className="flex gap-4 mt-4">
+                        <button 
+                            type="button"
+                            onClick={() => navigate(-1)}
+                            className="flex-1 bg-surf-card text-white font-bold uppercase py-3 rounded tracking-widest hover:bg-white/10 transition-colors border border-white/20"
+                        >
+                            <i className="ph-bold ph-pencil mr-2"></i>
+                            Edit Order
+                        </button>
+                        <button 
+                            type="button"
+                            onClick={() => {
+                                if (window.confirm('Are you sure you want to cancel this order?')) {
+                                    clearCart()
+                                    navigate('/')
+                                }
+                            }}
+                            className="flex-1 bg-red-500/20 text-red-400 font-bold uppercase py-3 rounded tracking-widest hover:bg-red-500/30 transition-colors border border-red-500/50"
+                        >
+                            <i className="ph-bold ph-x mr-2"></i>
+                            Cancel Order
+                        </button>
+                    </div>
 
                 </form>
             </div>

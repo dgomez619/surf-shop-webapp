@@ -108,11 +108,30 @@ export const CartProvider = ({ children }) => {
       const totalQty = currentQty + addingQty;
 
       // 3. THE SAFETY CHECK: Compare against actual Stock
-      // (item.stock comes from your Firestore data)
-      if (item.stock && totalQty > item.stock) {
-        alert(`Sorry, we only have ${item.stock} of these available!`);
-        // Return previous state without changes
-        return prevItems; 
+      let availableStock = item.stock || 0;
+      
+      // For products with size selection, check size-specific stock
+      if (item.selectedSize && item.stockBySize) {
+        availableStock = item.stockBySize[item.selectedSize] || 0;
+        
+        if (totalQty > availableStock) {
+          if (availableStock === 0) {
+            alert(`Sorry, size ${item.selectedSize} is currently out of stock!`);
+          } else {
+            alert(`Sorry, we only have ${availableStock} of size ${item.selectedSize} available!`);
+          }
+          return prevItems; 
+        }
+      } else {
+        // General stock check for non-sized products
+        if (totalQty > availableStock) {
+          if (availableStock === 0) {
+            alert(`Sorry, this item is currently out of stock!`);
+          } else {
+            alert(`Sorry, we only have ${availableStock} of these available!`);
+          }
+          return prevItems; 
+        }
       }
 
       if (existingItemIndex !== -1) {

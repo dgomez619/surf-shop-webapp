@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react'
 import { db } from '../../firebase.js' // Added .js extension to resolve path
-import { collection, getDocs, deleteDoc, doc, updateDoc } from 'firebase/firestore'
+import { collection, getDocs, deleteDoc, doc, updateDoc, query, where } from 'firebase/firestore'
 import { Link } from 'react-router-dom'
 
 export default function FleetDashboard() {
   const [rentals, setRentals] = useState([])
+  const [bookings, setBookings] = useState([])
   const [loading, setLoading] = useState(true)
 
   // Fetch rentals on mount
@@ -15,9 +16,27 @@ export default function FleetDashboard() {
   // 2. Fetch Logic
   const fetchRentals = async () => {
     try {
+      // Fetch rentals
       const snapshot = await getDocs(collection(db, 'rentals'))
       const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
       setRentals(items)
+      
+      // Fetch active bookings (status: 'confirmed')
+      const today = new Date().toISOString().split('T')[0]
+      const bookingsQuery = query(
+        collection(db, 'bookings'),
+        where('status', '==', 'confirmed')
+      )
+      const bookingsSnapshot = await getDocs(bookingsQuery)
+      const activeBookings = bookingsSnapshot.docs
+        .map(doc => doc.data())
+        .filter(booking => {
+          // Only count bookings that are currently active (today is within date range)
+          const startDate = booking.dateRange?.start
+          const endDate = booking.dateRange?.end
+          return startDate && endDate && today >= startDate && today <= endDate
+        })
+      setBookings(activeBookings)
     } catch (err) {
       console.error("Error fetching fleet:", err)
     } finally {
@@ -56,6 +75,11 @@ export default function FleetDashboard() {
         console.error("Error deleting asset:", err);
         alert("Error deleting asset");
     }
+  }
+
+  // Helper: Count currently rented units for a rental item
+  const getCurrentlyRented = (rentalId) => {
+    return bookings.filter(booking => booking.rentalId === rentalId).length
   }
 
   // Helper for Status Badge Color
@@ -110,6 +134,8 @@ export default function FleetDashboard() {
                             <th className="p-4">Asset Info</th>
                             <th className="p-4">Category</th>
                             <th className="p-4">Rates (Day / Mem)</th>
+                            <th className="p-4">Total</th>
+                            <th className="p-4">OUT</th>
                             <th className="p-4">Status</th>
                             <th className="p-4 text-right">Actions</th>
                         </tr>
@@ -143,6 +169,25 @@ export default function FleetDashboard() {
                                         <span>${item.rates?.daily} <span className="text-gray-600 text-[10px]">/day</span></span>
                                         <span className="text-surf-accent text-xs">${item.rates?.member} <span className="text-surf-accent/50 text-[10px]">/mem</span></span>
                                     </div>
+                                </td>
+                                <td className="p-4">
+                                    <span className="font-mono text-white">{item.stock || 0}</span>
+                                </td>
+                                <td className="p-4">
+                                    {(() => {
+                                        const rentedCount = getCurrentlyRented(item.id)
+                                        return (
+                                            <span className={`font-mono font-bold ${
+                                                rentedCount === 0 
+                                                    ? 'text-gray-500' 
+                                                    : rentedCount >= (item.stock || 0)
+                                                        ? 'text-red-400'
+                                                        : 'text-surf-accent'
+                                            }`}>
+                                                {rentedCount}
+                                            </span>
+                                        )
+                                    })()}
                                 </td>
                                 <td className="p-4">
                                     {/* CLICKABLE STATUS TOGGLE */}

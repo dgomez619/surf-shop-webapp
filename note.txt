@@ -23,3 +23,17 @@ Fix active navigation tab on admin side.
 In the "Admin/Bookings" created method to undo "returned" if clicked by accident. 
 
 Shipping Address not showing up completely in the "Recen Transactions" Admin
+
+Create a way to cancel the order, a button to go back to homepage, or previous page from the "Checkout page"
+
+The user should not be able to initially choose a quantity higher than the actual in stock quantity, the counter for the quantity the user wants to buy should either be synched or be able to detect when the quantity requested is higher than the quantity available. 
+
+For the sizes of products there should be a way to also keep count of how many of each sizes there is for one specific product, this information should also be some how available to the user to avoid placing an order of a product which specific size requested is not available. 
+
+The Rental Fleet table should show how many available of each rental equiment, and how may are currently being rented. this should all be connected to the logic of returning a rental equitment or deleting a rental Transactions
+
+Improve deletion message for a rental Transactions, check is the dates have pass already, if so no need for modal message explaining that it will make it availabe again. 
+
+User should be able to specefy at what time they plan on picking up the rental equitment, and the page should remind the user of the store operating hours, and depending on the time the user selects to pick up the equiment the return time should be automatically calculated to 24hours after. 
+
+Make the navigation bar in the admin side retractable and responsive. 

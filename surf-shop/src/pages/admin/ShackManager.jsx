@@ -83,45 +83,56 @@ export default function ShackManager() {
   if (loading) return <div className="min-h-screen bg-surf-black text-white flex items-center justify-center">Loading Shack HQ...</div>
 
   return (
-    <div className="min-h-screen bg-surf-black text-white font-body bg-noise">
+    <div className="min-h-screen bg-surf-black text-white font-body bg-noise w-full">
+      <main className="max-w-[1600px] mx-auto p-4 md:p-8">
       
-      {/* Header */}
-      <div className="border-b border-white/10 bg-surf-card px-8 py-4 flex justify-between items-center sticky top-0 z-50">
-        <div className="flex items-center gap-4">
-            <h1 className="font-display text-xl uppercase tracking-wide">The Shack Manager</h1>
-        </div>
-        
-        <div className="flex bg-black/40 p-1 rounded-lg">
+        {/* Header & Actions */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-8">
+          <div>
+            <h2 className="font-display text-4xl uppercase mb-1">The Shack Manager</h2>
+            <p className="text-gray-400 text-sm">Manage property listings and guest inquiries.</p>
+          </div>
+          
+          {/* VIEW TOGGLE */}
+          <div className="flex bg-black/40 p-1 rounded-lg border border-white/5">
             <button 
-                onClick={() => setActiveTab('inbox')}
-                className={`px-4 py-2 rounded text-xs font-bold uppercase tracking-widest transition-all ${activeTab === 'inbox' ? 'bg-surf-accent text-black shadow-lg' : 'text-gray-500 hover:text-white'}`}
+              onClick={() => setActiveTab('inbox')}
+              className={`px-4 py-2 rounded text-xs font-bold uppercase tracking-widest transition-all flex items-center gap-2 ${activeTab === 'inbox' ? 'bg-surf-accent text-black shadow-lg' : 'text-gray-500 hover:text-white'}`}
             >
-                Guest Inbox
+              <i className="ph-bold ph-envelope"></i> Guest Inbox
             </button>
             <button 
-                onClick={() => setActiveTab('editor')}
-                className={`px-4 py-2 rounded text-xs font-bold uppercase tracking-widest transition-all ${activeTab === 'editor' ? 'bg-surf-accent text-black shadow-lg' : 'text-gray-500 hover:text-white'}`}
+              onClick={() => setActiveTab('editor')}
+              className={`px-4 py-2 rounded text-xs font-bold uppercase tracking-widest transition-all flex items-center gap-2 ${activeTab === 'editor' ? 'bg-surf-accent text-black shadow-lg' : 'text-gray-500 hover:text-white'}`}
             >
-                Edit Listing
+              <i className="ph-bold ph-pencil-simple"></i> Edit Listing
             </button>
+          </div>
         </div>
-      </div>
 
-      <main className="max-w-5xl mx-auto p-4 md:p-8">
+        {/* Stats Row */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          <div className="bg-surf-card border border-white/5 p-4 rounded-xl">
+            <span className="text-gray-500 text-[10px] uppercase font-bold tracking-widest">Total Inquiries</span>
+            <p className="font-display text-3xl text-white">{inquiries.length}</p>
+          </div>
+          <div className="bg-surf-card border border-white/5 p-4 rounded-xl">
+            <span className="text-gray-500 text-[10px] uppercase font-bold tracking-widest">New Pending</span>
+            <p className="font-display text-3xl text-surf-accent">{inquiries.filter(i => i.status === 'new').length}</p>
+          </div>
+          <div className="bg-surf-card border border-white/5 p-4 rounded-xl">
+            <span className="text-gray-500 text-[10px] uppercase font-bold tracking-widest">Contacted</span>
+            <p className="font-display text-3xl text-blue-400">{inquiries.filter(i => i.status === 'contacted').length}</p>
+          </div>
+          <div className="bg-surf-card border border-white/5 p-4 rounded-xl">
+            <span className="text-gray-500 text-[10px] uppercase font-bold tracking-widest">Nightly Rate</span>
+            <p className="font-display text-3xl text-white">${property?.price || 0}</p>
+          </div>
+        </div>
 
         {/* --- TAB 1: INBOX --- */}
         {activeTab === 'inbox' && (
             <div className="space-y-4">
-                <div className="flex justify-between items-end mb-4">
-                    <div>
-                        <h2 className="text-2xl font-bold">Booking Requests</h2>
-                        <p className="text-gray-400 text-sm">Leads from the website form.</p>
-                    </div>
-                    <span className="bg-surf-card border border-white/10 px-3 py-1 rounded text-xs font-mono text-surf-accent">
-                        {inquiries.filter(i => i.status === 'new').length} New Pending
-                    </span>
-                </div>
-
                 <div className="grid gap-4">
                     {inquiries.map(inq => (
                         <div key={inq.id} className={`bg-surf-card border p-6 rounded-xl transition-all ${inq.status === 'new' ? 'border-surf-accent/50 shadow-[0_0_20px_rgba(196,249,52,0.1)]' : 'border-white/5 opacity-75'}`}>
@@ -180,12 +191,7 @@ export default function ShackManager() {
 
         {/* --- TAB 2: EDITOR --- */}
         {activeTab === 'editor' && property && (
-            <div className="max-w-2xl mx-auto">
-                <div className="mb-8">
-                    <h2 className="text-2xl font-bold">Property Details</h2>
-                    <p className="text-gray-400 text-sm">Update pricing and content instantly.</p>
-                </div>
-
+            <div className="max-w-3xl mx-auto">
                 <form onSubmit={handleSaveProperty} className="space-y-6">
                     
                     <div className="bg-surf-card p-6 rounded-xl border border-white/5 space-y-4">
