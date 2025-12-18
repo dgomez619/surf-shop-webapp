@@ -27,7 +27,8 @@ const AdminLayout = () => {
         bg-surf-card border-r border-white/10 p-6 
         flex flex-col justify-between
         transition-all duration-300 ease-in-out
-        ${isSidebarCollapsed ? 'w-20' : 'w-64'}
+        fixed left-0 top-0 h-screen
+        ${isSidebarCollapsed ? 'w-20' : 'w-32'}
       `}>
         <div className="flex flex-col gap-6">
           <div className="flex items-center justify-between">
@@ -120,14 +121,14 @@ const AdminLayout = () => {
       {isSidebarCollapsed && (
         <button
           onClick={() => setIsSidebarCollapsed(false)}
-          className="fixed left-20 top-6 z-50 bg-surf-card border border-white/10 p-2 rounded-r-lg text-gray-400 hover:text-white hover:bg-white/10 transition-colors"
+          className="fixed left-20 top-6 z-50 bg-surf-card border border-white/10 p-1 rounded-r text-gray-400 hover:text-white hover:bg-white/10 transition-colors"
           title="Expand sidebar"
         >
-          <i className="ph-bold ph-caret-right text-xl"></i>
+          <i className="ph-bold ph-caret-right text-sm"></i>
         </button>
       )}
 
-      <main className="flex-1 overflow-auto">
+      <main className={`flex-1 overflow-auto transition-all duration-300 ${isSidebarCollapsed ? 'ml-20' : 'ml-48'}`}>
         <Outlet />
       </main>
     </div>

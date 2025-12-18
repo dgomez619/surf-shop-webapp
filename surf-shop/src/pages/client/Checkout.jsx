@@ -376,9 +376,14 @@ export default function Checkout() {
                                     
                                     {/* Dynamic Info */}
                                     {item.type === 'rental' ? (
-                                        <div className="text-xs text-surf-accent mt-1">
-                                            {item.dateRange.start} - {item.dateRange.end}
-                                        </div>
+                                        <>
+                                            <div className="text-xs text-surf-accent mt-1">
+                                                {item.dateRange.start} - {item.dateRange.end}
+                                            </div>
+                                            <div className="text-xs text-gray-400 mt-0.5">
+                                                Qty: {item.quantity}
+                                            </div>
+                                        </>
                                     ) : (
                                         <div className="text-xs text-gray-400 mt-1">
                                             Size: {item.selectedSize} • Qty: {item.quantity}
@@ -387,7 +392,7 @@ export default function Checkout() {
                                 </div>
                                 <div className="font-mono text-sm">
                                     {item.type === 'rental' 
-                                        ? `$${(item.price * (item.days || 1)).toFixed(2)}`
+                                        ? `$${(item.price * (item.days || 1) * item.quantity).toFixed(2)}`
                                         : `$${(item.price * item.quantity).toFixed(2)}`
                                     }
                                 </div>

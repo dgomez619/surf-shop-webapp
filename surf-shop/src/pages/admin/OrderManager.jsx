@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { db, auth } from '../../firebase.js' 
 import { collection, getDocs, query, orderBy, updateDoc, doc, deleteDoc } from 'firebase/firestore'
 import { useNavigate, Link } from 'react-router-dom'
@@ -9,7 +9,6 @@ export default function OrderManager() {
   const [orders, setOrders] = useState([])
   const [bookings, setBookings] = useState([])
   const [loading, setLoading] = useState(true)
-  const [user, setUser] = useState(null)
   const [expandedOrderId, setExpandedOrderId] = useState(null)
   const [selectedOrders, setSelectedOrders] = useState([])
   const [selectedBookings, setSelectedBookings] = useState([])
@@ -19,14 +18,14 @@ export default function OrderManager() {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       if (!currentUser) navigate('/admin/login')
       else {
-        setUser(currentUser)
         fetchAllData()
       }
     })
     return () => unsubscribe()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navigate])
 
-  const fetchAllData = async () => {
+  const fetchAllData = useCallback(async () => {
     setLoading(true)
     try {
       const orderQ = query(collection(db, 'orders'), orderBy('createdAt', 'desc'))
@@ -35,12 +34,65 @@ export default function OrderManager() {
 
       const bookingQ = query(collection(db, 'bookings'), orderBy('createdAt', 'desc'))
       const bookingSnap = await getDocs(bookingQ)
-      setBookings(bookingSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })))
+      const bookingsData = bookingSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+      setBookings(bookingsData)
+
+      // Auto-return overdue bookings (with +1 day grace period)
+      await checkOverdueBookings(bookingsData)
 
     } catch (err) {
       console.error("Error fetching data:", err)
     } finally {
       setLoading(false)
+    }
+  }, [])
+
+  // Auto-return overdue bookings (+1 day grace period)
+  const checkOverdueBookings = async (bookingsData) => {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    
+    const overdueBookings = bookingsData.filter(booking => {
+      if (booking.status !== 'confirmed' || !booking.dateRange?.end) return false
+      
+      // Parse end date as local date
+      const [year, month, day] = booking.dateRange.end.split('-').map(Number)
+      const endDate = new Date(year, month - 1, day)
+      endDate.setHours(0, 0, 0, 0)
+      
+      // Add +1 day grace period
+      const gracePeriodEnd = new Date(endDate)
+      gracePeriodEnd.setDate(gracePeriodEnd.getDate() + 1)
+      
+      return today > gracePeriodEnd
+    })
+    
+    if (overdueBookings.length === 0) return
+    
+    try {
+      // Batch update overdue bookings to 'returned' with autoReturned flag
+      await Promise.all(
+        overdueBookings.map(booking =>
+          updateDoc(doc(db, 'bookings', booking.id), {
+            status: 'returned',
+            autoReturned: true,
+            autoReturnedAt: new Date()
+          })
+        )
+      )
+      
+      // Update local state
+      setBookings(prev =>
+        prev.map(booking =>
+          overdueBookings.find(ob => ob.id === booking.id)
+            ? { ...booking, status: 'returned', autoReturned: true }
+            : booking
+        )
+      )
+      
+      console.log(`Auto-returned ${overdueBookings.length} overdue booking(s)`)
+    } catch {
+      console.error("Error auto-returning bookings")
     }
   }
 
@@ -61,18 +113,39 @@ export default function OrderManager() {
       try {
           await deleteDoc(doc(db, 'orders', orderId));
           setOrders(prev => prev.filter(o => o.id !== orderId));
-      } catch (err) {
+      } catch {
           alert("Error deleting order");
       }
   }
 
-  // NEW: Delete Booking (Frees up availability)
+  // NEW: Delete Booking (Smart confirmation based on date)
   const handleDeleteBooking = async (bookingId) => {
-      if (!window.confirm("Delete this booking? This will make the item available again for these dates.")) return;
+      const booking = bookings.find(b => b.id === bookingId)
+      if (!booking) return
+      
+      // Check if booking is in the past
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      
+      let isPastBooking = false
+      if (booking.dateRange?.end) {
+          const [year, month, day] = booking.dateRange.end.split('-').map(Number)
+          const endDate = new Date(year, month - 1, day)
+          endDate.setHours(0, 0, 0, 0)
+          isPastBooking = endDate < today
+      }
+      
+      // Smart confirmation message
+      const confirmMessage = isPastBooking
+          ? "Delete this past booking record? This is just for record-keeping."
+          : `Delete this booking?\n\nThis will make ${booking.itemName} available again from ${formatDate(booking.dateRange?.start)} to ${formatDate(booking.dateRange?.end)}.`
+      
+      if (!window.confirm(confirmMessage)) return
+      
       try {
           await deleteDoc(doc(db, 'bookings', bookingId));
           setBookings(prev => prev.filter(b => b.id !== bookingId));
-      } catch (err) {
+      } catch {
           alert("Error deleting booking");
       }
   }
@@ -86,7 +159,7 @@ export default function OrderManager() {
           await Promise.all(selectedOrders.map(id => deleteDoc(doc(db, 'orders', id))));
           setOrders(prev => prev.filter(o => !selectedOrders.includes(o.id)));
           setSelectedOrders([]);
-      } catch (err) {
+      } catch {
           alert("Error deleting orders");
       }
   }
@@ -100,7 +173,7 @@ export default function OrderManager() {
           await Promise.all(selectedBookings.map(id => deleteDoc(doc(db, 'bookings', id))));
           setBookings(prev => prev.filter(b => !selectedBookings.includes(b.id)));
           setSelectedBookings([]);
-      } catch (err) {
+      } catch {
           alert("Error deleting bookings");
       }
   }
@@ -198,6 +271,20 @@ export default function OrderManager() {
       })
       
       return { dailyRevenue, weeklyRevenue }
+  }
+
+  // Helper to check if booking is in the past
+  const isBookingPast = (booking) => {
+      if (!booking.dateRange?.end) return false
+      
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      
+      const [year, month, day] = booking.dateRange.end.split('-').map(Number)
+      const endDate = new Date(year, month - 1, day)
+      endDate.setHours(0, 0, 0, 0)
+      
+      return endDate < today
   }
 
   const { dailyRevenue, weeklyRevenue } = calculateRevenue()
@@ -369,7 +456,7 @@ export default function OrderManager() {
                                                         <div className="space-y-3">
                                                             {order.items?.map((item, idx) => (
                                                                 <div key={idx} className="flex gap-4 items-center bg-surf-card border border-white/5 p-3 rounded-lg">
-                                                                    <div className="w-12 h-12 bg-gray-800 rounded overflow-hidden flex-shrink-0">
+                                                                    <div className="w-12 h-12 bg-gray-800 rounded overflow-hidden shrink-0">
                                                                         <img src={item.image} alt="" className="w-full h-full object-cover" />
                                                                     </div>
                                                                     <div className="flex-1">
@@ -483,8 +570,10 @@ export default function OrderManager() {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-white/5">
-                            {bookings.map((booking) => (
-                                <tr key={booking.id} className={`hover:bg-white/5 transition-colors ${selectedBookings.includes(booking.id) ? 'bg-surf-accent/5' : ''}`}>
+                            {bookings.map((booking) => {
+                                const isPast = isBookingPast(booking)
+                                return (
+                                <tr key={booking.id} className={`hover:bg-white/5 transition-colors ${selectedBookings.includes(booking.id) ? 'bg-surf-accent/5' : ''} ${isPast ? 'opacity-50' : ''}`}>
                                     <td className="p-4">
                                         <input
                                             type="checkbox"
@@ -495,6 +584,7 @@ export default function OrderManager() {
                                     </td>
                                     <td className="p-4 font-mono text-white border-l-4 border-l-transparent hover:border-l-surf-accent">
                                         {formatDate(booking.dateRange?.start)}
+                                        {isPast && <span className="ml-2 px-1.5 py-0.5 bg-gray-500/20 text-gray-400 text-[9px] font-bold uppercase tracking-widest rounded border border-gray-500/30">Past</span>}
                                     </td>
                                     <td className="p-4 font-mono text-gray-400">
                                         {formatDate(booking.dateRange?.end)}
@@ -505,13 +595,20 @@ export default function OrderManager() {
                                     </td>
                                     <td className="p-4">{booking.customerName}</td>
                                     <td className="p-4">
-                                        <span className={`inline-block px-2 py-1 rounded text-[10px] font-bold uppercase tracking-widest border ${
-                                            booking.status === 'confirmed' ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' :
-                                            booking.status === 'returned' ? 'bg-green-500/20 text-green-400 border-green-500/30' :
-                                            'bg-gray-500/20 text-gray-400'
-                                        }`}>
-                                            {booking.status}
-                                        </span>
+                                        <div className="flex items-center gap-2">
+                                            <span className={`inline-block px-2 py-1 rounded text-[10px] font-bold uppercase tracking-widest border ${
+                                                booking.status === 'confirmed' ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' :
+                                                booking.status === 'returned' ? 'bg-green-500/20 text-green-400 border-green-500/30' :
+                                                'bg-gray-500/20 text-gray-400'
+                                            }`}>
+                                                {booking.status}
+                                            </span>
+                                            {booking.autoReturned && (
+                                                <span className="px-1.5 py-0.5 bg-orange-500/20 text-orange-400 text-[9px] font-bold uppercase tracking-widest rounded border border-orange-500/30" title="Automatically returned after grace period">
+                                                    Auto
+                                                </span>
+                                            )}
+                                        </div>
                                     </td>
                                     <td className="p-4 text-right">
                                         <div className="flex justify-end items-center gap-2">
@@ -544,7 +641,7 @@ export default function OrderManager() {
                                         </div>
                                     </td>
                                 </tr>
-                            ))}
+                            )})}
                         </tbody>
                     </table>
                     {bookings.length === 0 && (
