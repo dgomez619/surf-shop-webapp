@@ -1,5 +1,16 @@
 @import "tailwindcss";
 
+@theme {
+    --font-display: 'Anton', sans-serif;
+    --font-body: 'Inter', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+    --color-surf-black: #0a0a0a;
+    --color-surf-gray: #171717;
+    --color-surf-card: #171717;
+    --color-surf-accent: #C4F934;
+    --color-surf-ocean: #3B82F6;
+}
+
 @layer base {
     html, body, #root {
         background-color: #0a0a0a;

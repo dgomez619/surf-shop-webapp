@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { useCart } from '../../context/CartContext'
 import { db } from '../../firebase'
-import { collection, writeBatch, doc, serverTimestamp, increment, getDoc, query, where, getDocs } from 'firebase/firestore'
+import { collection, doc, serverTimestamp, query, where, getDocs, runTransaction } from 'firebase/firestore'
 import { useNavigate, Link } from 'react-router-dom'
+import { parseLocalDate } from '../../utils/dateUtils'
 
 export default function Checkout() {
   const { cartItems, cartTotal, clearCart } = useCart()
@@ -41,206 +42,204 @@ export default function Checkout() {
     setError(null)
 
     try {
-        // === STEP 1: PRE-VALIDATE AVAILABILITY & PRICES ===
-        const validationErrors = []
-        const validatedItems = []
-
+        // === STEP 1: PRE-FETCH RENTAL BOOKING CONFLICTS ===
+        const rentalConflictMap = {}
         for (const cartItem of cartItems) {
             if (cartItem.type === 'rental') {
-                // Validate rental availability
-                const rentalDoc = await getDoc(doc(db, 'rentals', cartItem.id))
-                if (!rentalDoc.exists()) {
-                    validationErrors.push(`${cartItem.name} is no longer available`)
-                    continue
-                }
-
-                const rentalData = rentalDoc.data()
-                
-                // Check if still active
-                if (rentalData.status !== 'active') {
-                    validationErrors.push(`${cartItem.name} is currently unavailable (status: ${rentalData.status})`)
-                    continue
-                }
-
-                // Check current bookings for date conflicts
                 const bookingsQuery = query(
                     collection(db, 'bookings'),
                     where('rentalId', '==', cartItem.id)
                 )
                 const bookingsSnap = await getDocs(bookingsQuery)
-                
                 const conflictCount = bookingsSnap.docs.filter(bookingDoc => {
                     const booking = bookingDoc.data()
-                    const bookingStart = new Date(booking.dateRange.start)
-                    const bookingEnd = new Date(booking.dateRange.end)
-                    const requestStart = new Date(cartItem.dateRange.start)
-                    const requestEnd = new Date(cartItem.dateRange.end)
+                    // Ignore bookings that have already been returned
+                    if (booking.status === 'returned') return false
+
+                    const bookingStart = parseLocalDate(booking.dateRange?.start)
+                    const bookingEnd = parseLocalDate(booking.dateRange?.end)
+                    const requestStart = parseLocalDate(cartItem.dateRange?.start)
+                    const requestEnd = parseLocalDate(cartItem.dateRange?.end)
                     
                     return requestStart < bookingEnd && requestEnd > bookingStart
                 }).length
 
-                const availableStock = rentalData.stock - conflictCount
-
-                if (availableStock < cartItem.quantity) {
-                    validationErrors.push(`${cartItem.name}: Only ${availableStock} available for selected dates (you requested ${cartItem.quantity})`)
-                    continue
-                }
-
-                // Get current rate
-                const currentRate = rentalData.rates?.daily || cartItem.price
-                validatedItems.push({
-                    ...cartItem,
-                    price: currentRate,
-                    dailyRate: currentRate,
-                    verifiedStock: availableStock,
-                    // Ensure days is set
-                    days: cartItem.days || 1
-                })
-
-            } else if (cartItem.type === 'shop') {
-                // Validate shop product availability
-                const productDoc = await getDoc(doc(db, 'products', cartItem.id))
-                if (!productDoc.exists()) {
-                    validationErrors.push(`${cartItem.name} is no longer available`)
-                    continue
-                }
-
-                const productData = productDoc.data()
-                
-                // Check size-specific stock if product has size selected
-                if (cartItem.selectedSize && productData.stockBySize) {
-                    const sizeStock = productData.stockBySize[cartItem.selectedSize] || 0
-                    
-                    if (sizeStock === 0) {
-                        validationErrors.push(`${cartItem.name} (Size ${cartItem.selectedSize}): Currently out of stock`)
-                        continue
-                    } else if (sizeStock < cartItem.quantity) {
-                        validationErrors.push(`${cartItem.name} (Size ${cartItem.selectedSize}): Only ${sizeStock} in stock (you requested ${cartItem.quantity})`)
-                        continue
-                    }
-                } else {
-                    // General stock check for non-sized products
-                    if (productData.stock === 0) {
-                        validationErrors.push(`${cartItem.name}: Item currently out of stock`)
-                        continue
-                    } else if (productData.stock < cartItem.quantity) {
-                        validationErrors.push(`${cartItem.name}: Only ${productData.stock} in stock (you requested ${cartItem.quantity})`)
-                        continue
-                    }
-                }
-
-                // Get current price
-                const currentPrice = productData.price || cartItem.price
-                validatedItems.push({
-                    ...cartItem,
-                    price: currentPrice,
-                    verifiedStock: cartItem.selectedSize && productData.stockBySize 
-                        ? productData.stockBySize[cartItem.selectedSize]
-                        : productData.stock
-                })
+                rentalConflictMap[cartItem.cartItemId || cartItem.id] = conflictCount
             }
         }
 
-        // If any validation errors, stop checkout
-        if (validationErrors.length > 0) {
-            setError(validationErrors.join('. '))
-            setLoading(false)
-            return
-        }
-
-        // === STEP 2: CALCULATE TOTALS WITH VALIDATED PRICES ===
-        const TAX_RATE = 0.08
-        const subtotal = validatedItems.reduce((sum, item) => {
-            if (item.type === 'rental') {
-                return sum + (item.price * (item.days || 1) * item.quantity)
-            }
-            return sum + (item.price * item.quantity)
-        }, 0)
-        const tax = subtotal * TAX_RATE
-        const total = subtotal + tax
-
-        // === STEP 3: CREATE BATCH TRANSACTION ===
-        const batch = writeBatch(db)
-        
         const orderRef = doc(collection(db, 'orders'))
         const orderId = orderRef.id
 
-        // Order data with validated items and complete pricing
-        const orderData = {
-            orderId,
-            customer: {
-                email: formData.email,
-                name: `${formData.firstName} ${formData.lastName}`,
-                address: formData.address,
-                city: formData.city,
-                zip: formData.zip
-            },
-            items: validatedItems,
-            subtotal,
-            tax,
-            taxRate: TAX_RATE,
-            total,
-            status: 'paid',
-            createdAt: serverTimestamp()
-        }
+        // === STEP 2: ATOMIC TRANSACTION FOR VALIDATION, ORDER, BOOKINGS & STOCK ===
+        await runTransaction(db, async (transaction) => {
+            const validationErrors = []
+            const validatedItems = []
+            const productUpdates = []
 
-        batch.set(orderRef, orderData)
+            // Firestore transactions require all reads before any writes
+            for (const cartItem of cartItems) {
+                if (cartItem.type === 'rental') {
+                    const rentalRef = doc(db, 'rentals', cartItem.id)
+                    const rentalDoc = await transaction.get(rentalRef)
+                    if (!rentalDoc.exists()) {
+                        validationErrors.push(`${cartItem.name} is no longer available`)
+                        continue
+                    }
 
-        // === STEP 4: HANDLE SIDE EFFECTS ===
-        validatedItems.forEach(item => {
-            
-            // A. RENTALS: Create booking(s) with quantity
-            if (item.type === 'rental') {
-                // Create one booking per quantity unit
-                for (let i = 0; i < item.quantity; i++) {
-                    const bookingRef = doc(collection(db, 'bookings'))
-                    batch.set(bookingRef, {
-                        orderId,
-                        rentalId: item.id,
-                        boardId: item.id, // Alias for backward compatibility
-                        itemName: item.name,
-                        dateRange: item.dateRange,
-                        customerName: `${formData.firstName} ${formData.lastName}`,
-                        customerEmail: formData.email,
-                        quantity: 1, // Each booking represents 1 unit
-                        unitNumber: i + 1, // Track which unit (1 of 2, 2 of 2, etc.)
-                        totalUnits: item.quantity,
-                        status: 'confirmed',
-                        createdAt: serverTimestamp()
+                    const rentalData = rentalDoc.data()
+                    if (rentalData.status !== 'active') {
+                        validationErrors.push(`${cartItem.name} is currently unavailable (status: ${rentalData.status})`)
+                        continue
+                    }
+
+                    const conflictCount = rentalConflictMap[cartItem.cartItemId || cartItem.id] || 0
+                    const availableStock = (rentalData.stock || 0) - conflictCount
+
+                    if (availableStock < cartItem.quantity) {
+                        validationErrors.push(`${cartItem.name}: Only ${Math.max(0, availableStock)} available for selected dates (you requested ${cartItem.quantity})`)
+                        continue
+                    }
+
+                    const currentRate = rentalData.rates?.daily || cartItem.price
+                    validatedItems.push({
+                        ...cartItem,
+                        price: currentRate,
+                        dailyRate: currentRate,
+                        verifiedStock: availableStock,
+                        days: cartItem.days || 1
+                    })
+
+                } else if (cartItem.type === 'shop') {
+                    const productRef = doc(db, 'products', cartItem.id)
+                    const productDoc = await transaction.get(productRef)
+                    if (!productDoc.exists()) {
+                        validationErrors.push(`${cartItem.name} is no longer available`)
+                        continue
+                    }
+
+                    const productData = productDoc.data()
+                    
+                    if (cartItem.selectedSize && productData.stockBySize) {
+                        const sizeStock = productData.stockBySize[cartItem.selectedSize] || 0
+                        if (sizeStock === 0) {
+                            validationErrors.push(`${cartItem.name} (Size ${cartItem.selectedSize}): Currently out of stock`)
+                            continue
+                        } else if (sizeStock < cartItem.quantity) {
+                            validationErrors.push(`${cartItem.name} (Size ${cartItem.selectedSize}): Only ${sizeStock} in stock (you requested ${cartItem.quantity})`)
+                            continue
+                        }
+
+                        productUpdates.push({
+                            ref: productRef,
+                            data: {
+                                stock: Math.max(0, (productData.stock || 0) - cartItem.quantity),
+                                stockBySize: {
+                                    ...productData.stockBySize,
+                                    [cartItem.selectedSize]: sizeStock - cartItem.quantity
+                                }
+                            }
+                        })
+                    } else {
+                        const currentStock = productData.stock || 0
+                        if (currentStock === 0) {
+                            validationErrors.push(`${cartItem.name}: Item currently out of stock`)
+                            continue
+                        } else if (currentStock < cartItem.quantity) {
+                            validationErrors.push(`${cartItem.name}: Only ${currentStock} in stock (you requested ${cartItem.quantity})`)
+                            continue
+                        }
+
+                        productUpdates.push({
+                            ref: productRef,
+                            data: {
+                                stock: currentStock - cartItem.quantity
+                            }
+                        })
+                    }
+
+                    const currentPrice = productData.price || cartItem.price
+                    validatedItems.push({
+                        ...cartItem,
+                        price: currentPrice,
+                        verifiedStock: cartItem.selectedSize && productData.stockBySize 
+                            ? productData.stockBySize[cartItem.selectedSize]
+                            : productData.stock
                     })
                 }
             }
 
-            // B. SHOP PRODUCTS: Decrement stock atomically
-            if (item.type === 'shop') {
-                const productRef = doc(db, 'products', item.id)
-                
-                if (item.selectedSize && item.stockBySize) {
-                    // Decrement size-specific stock
-                    batch.update(productRef, {
-                        [`stockBySize.${item.selectedSize}`]: increment(-item.quantity),
-                        // Also decrement total stock
-                        stock: increment(-item.quantity)
-                    })
-                } else {
-                    // Decrement general stock for non-sized products
-                    batch.update(productRef, {
-                        stock: increment(-item.quantity)
-                    })
-                }
+            if (validationErrors.length > 0) {
+                throw new Error(validationErrors.join('. '))
             }
+
+            // Calculate totals with validated prices
+            const TAX_RATE = 0.08
+            const subtotal = validatedItems.reduce((sum, item) => {
+                if (item.type === 'rental') {
+                    return sum + (item.price * (item.days || 1) * item.quantity)
+                }
+                return sum + (item.price * item.quantity)
+            }, 0)
+            const tax = subtotal * TAX_RATE
+            const total = subtotal + tax
+
+            // Write Order
+            const orderData = {
+                orderId,
+                customer: {
+                    email: formData.email,
+                    name: `${formData.firstName} ${formData.lastName}`,
+                    address: formData.address,
+                    city: formData.city,
+                    zip: formData.zip
+                },
+                items: validatedItems,
+                subtotal,
+                tax,
+                taxRate: TAX_RATE,
+                total,
+                status: 'paid',
+                createdAt: serverTimestamp()
+            }
+            transaction.set(orderRef, orderData)
+
+            // Write Bookings for Rentals
+            validatedItems.forEach(item => {
+                if (item.type === 'rental') {
+                    for (let i = 0; i < item.quantity; i++) {
+                        const bookingRef = doc(collection(db, 'bookings'))
+                        transaction.set(bookingRef, {
+                            orderId,
+                            rentalId: item.id,
+                            boardId: item.id,
+                            itemName: item.name,
+                            dateRange: item.dateRange,
+                            customerName: `${formData.firstName} ${formData.lastName}`,
+                            customerEmail: formData.email,
+                            quantity: 1,
+                            unitNumber: i + 1,
+                            totalUnits: item.quantity,
+                            status: 'confirmed',
+                            createdAt: serverTimestamp()
+                        })
+                    }
+                }
+            })
+
+            // Write Stock Decrements for Shop Products
+            productUpdates.forEach(update => {
+                transaction.update(update.ref, update.data)
+            })
         })
 
-        // === STEP 5: COMMIT TRANSACTION ===
-        await batch.commit()
-
-        // === STEP 6: SUCCESS ===
+        // === STEP 3: SUCCESS ===
         clearCart()
         navigate(`/order-success/${orderId}`)
 
     } catch (err) {
         console.error("Checkout Error:", err)
-        setError(`Payment processing failed: ${err.message}. Please try again.`)
+        setError(err.message || 'Payment processing failed. Please try again.')
     } finally {
         setLoading(false)
     }
@@ -328,7 +327,7 @@ export default function Checkout() {
                     </div>
 
                     <button disabled={loading} className="w-full bg-surf-accent text-black font-bold uppercase py-4 rounded tracking-widest hover:bg-white transition-colors text-lg cursor-pointer">
-                        {loading ? 'Processing...' : `Pay $${cartTotal.toLocaleString()}`}
+                        {loading ? 'Processing...' : `Pay $${(cartTotal * 1.08).toFixed(2)}`}
                     </button>
 
                     {/* Order Actions */}

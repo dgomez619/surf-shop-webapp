@@ -72,7 +72,7 @@ export default function Dashboard() {
                     <div className="bg-surf-card border border-white/5 p-4 rounded-xl">
                         <span className="text-gray-500 text-[10px] uppercase font-bold tracking-widest">Value</span>
                         <p className="font-display text-3xl text-surf-accent">
-                            ${products.reduce((acc, curr) => acc + (curr.price || 0), 0).toLocaleString()}
+                            ${products.reduce((acc, curr) => acc + ((curr.price || 0) * (curr.stock || 0)), 0).toLocaleString()}
                         </p>
                     </div>
                 </div>

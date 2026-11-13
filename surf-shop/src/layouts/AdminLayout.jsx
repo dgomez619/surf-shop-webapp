@@ -5,6 +5,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 
 const AdminLayout = () => {
   const [user, setUser] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
@@ -12,13 +13,26 @@ const AdminLayout = () => {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       if (!currentUser) {
+        setAuthLoading(false);
         navigate('/admin/login');
       } else {
         setUser(currentUser);
+        setAuthLoading(false);
       }
     });
     return () => unsubscribe();
   }, [navigate]);
+
+  if (authLoading || !user) {
+    return (
+      <div className="min-h-screen bg-surf-black text-white flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <i className="ph-duotone ph-spinner-gap text-4xl animate-spin text-surf-accent"></i>
+          <span className="font-mono text-sm tracking-widest uppercase text-gray-500">Authenticating...</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen bg-surf-black">
@@ -27,8 +41,8 @@ const AdminLayout = () => {
         bg-surf-card border-r border-white/10 p-6 
         flex flex-col justify-between
         transition-all duration-300 ease-in-out
-        fixed left-0 top-0 h-screen
-        ${isSidebarCollapsed ? 'w-20' : 'w-32'}
+        fixed left-0 top-0 h-screen z-40
+        ${isSidebarCollapsed ? 'w-20' : 'w-40'}
       `}>
         <div className="flex flex-col gap-6">
           <div className="flex items-center justify-between">
@@ -128,7 +142,7 @@ const AdminLayout = () => {
         </button>
       )}
 
-      <main className={`flex-1 overflow-auto transition-all duration-300 ${isSidebarCollapsed ? 'ml-20' : 'ml-48'}`}>
+      <main className={`flex-1 overflow-auto transition-all duration-300 ${isSidebarCollapsed ? 'ml-20' : 'ml-40'}`}>
         <Outlet />
       </main>
     </div>

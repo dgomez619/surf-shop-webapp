@@ -1,25 +1,17 @@
 import { createContext, useContext, useState, useEffect, useMemo } from 'react';
+import { calculateDays } from '../utils/dateUtils';
 
 // Create the Cart Context
 const CartContext = createContext(null);
 
 // Custom hook for consuming the cart context
+// eslint-disable-next-line react-refresh/only-export-components
 export const useCart = () => {
   const context = useContext(CartContext);
   if (!context) {
     throw new Error('useCart must be used within a CartProvider');
   }
   return context;
-};
-
-// Helper: Calculate number of days between two dates
-const calculateDays = (startDate, endDate) => {
-  if (!startDate || !endDate) return 1;
-  const start = new Date(startDate);
-  const end = new Date(endDate);
-  const diffTime = Math.abs(end - start);
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  return diffDays || 1; // Minimum 1 day
 };
 
 // Helper: Generate unique ID for cart items
@@ -165,7 +157,7 @@ export const CartProvider = ({ children }) => {
     );
   };
 
-  // Update quantity (increment/decrement)
+  // Update quantity (increment/decrement) with stock validation
   const updateQuantity = (cartItemId, delta) => {
     setCartItems((prevItems) => {
       return prevItems
@@ -176,6 +168,23 @@ export const CartProvider = ({ children }) => {
             // Remove item if quantity drops to 0 or below
             if (newQuantity <= 0) {
               return null;
+            }
+
+            // Enforce available stock limit when incrementing
+            if (delta > 0) {
+              const availableStock =
+                item.selectedSize && item.stockBySize
+                  ? item.stockBySize[item.selectedSize] ?? 0
+                  : item.stock ?? Infinity;
+
+              if (newQuantity > availableStock) {
+                if (item.selectedSize && item.stockBySize) {
+                  alert(`Sorry, we only have ${availableStock} of size ${item.selectedSize} available!`);
+                } else {
+                  alert(`Sorry, we only have ${availableStock} of these available!`);
+                }
+                return item;
+              }
             }
             
             return {

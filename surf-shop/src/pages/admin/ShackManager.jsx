@@ -9,14 +9,12 @@ export default function ShackManager() {
   const [inquiries, setInquiries] = useState([])
   const [property, setProperty] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [user, setUser] = useState(null)
   const navigate = useNavigate()
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       if (!currentUser) navigate('/admin/login')
       else {
-        setUser(currentUser)
         fetchData()
       }
     })
@@ -71,6 +69,7 @@ export default function ShackManager() {
           })
           alert("Listing updated successfully!")
       } catch (err) {
+          console.error("Error saving property:", err)
           alert("Error saving property.")
       }
   }

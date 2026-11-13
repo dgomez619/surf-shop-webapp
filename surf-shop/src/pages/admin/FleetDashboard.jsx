@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
-import { db } from '../../firebase.js' // Added .js extension to resolve path
+import { db } from '../../firebase.js'
 import { collection, getDocs, deleteDoc, doc, updateDoc, query, where } from 'firebase/firestore'
 import { Link } from 'react-router-dom'
+import { formatLocalDate } from '../../utils/dateUtils.js'
 
 export default function FleetDashboard() {
   const [rentals, setRentals] = useState([])
@@ -21,8 +22,8 @@ export default function FleetDashboard() {
       const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
       setRentals(items)
       
-      // Fetch active bookings (status: 'confirmed')
-      const today = new Date().toISOString().split('T')[0]
+      // Fetch active bookings (status: 'confirmed') using local date
+      const today = formatLocalDate(new Date())
       const bookingsQuery = query(
         collection(db, 'bookings'),
         where('status', '==', 'confirmed')

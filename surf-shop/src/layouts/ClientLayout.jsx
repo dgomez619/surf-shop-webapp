@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useCart } from '../context/CartContext';
 
 // Global App Component
-import CartDrawer from '../components/admin/CartDrawer.jsx';
+import CartDrawer from '../components/ui/CartDrawer.jsx';
 
 export default function ClientLayout() {
   const { cartCount, toggleCart } = useCart();

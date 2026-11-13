@@ -1,5 +1,5 @@
 import { db } from '../../firebase'; 
-import { collection, addDoc, writeBatch, doc } from "firebase/firestore";
+import { collection, writeBatch, doc } from "firebase/firestore";
 
 const productsToSeed = [
   // --- MEN'S APPAREL ---

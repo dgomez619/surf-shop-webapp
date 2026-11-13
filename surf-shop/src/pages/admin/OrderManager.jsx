@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, Fragment } from 'react'
 import { db, auth } from '../../firebase.js' 
 import { collection, getDocs, query, orderBy, updateDoc, doc, deleteDoc } from 'firebase/firestore'
 import { useNavigate, Link } from 'react-router-dom'
@@ -386,9 +386,8 @@ export default function OrderManager() {
                                 const orderType = getOrderType(order.items)
                                 
                                 return (
-                                <>  
+                                <Fragment key={order.id}>  
                                     <tr 
-                                        key={order.id} 
                                         className={`hover:bg-white/5 transition-colors ${expandedOrderId === order.id ? 'bg-white/5' : ''} ${selectedOrders.includes(order.id) ? 'bg-surf-accent/5' : ''}`}
                                     >
                                         <td className="p-4" onClick={(e) => e.stopPropagation()}>
@@ -521,7 +520,7 @@ export default function OrderManager() {
                                             </td>
                                         </tr>
                                     )}
-                                </>
+                                </Fragment>
                             )})}
                         </tbody>
                     </table>

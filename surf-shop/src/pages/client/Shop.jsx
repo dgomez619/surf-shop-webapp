@@ -274,7 +274,7 @@ export default function Shop() {
         try {
             const querySnapshot = await getDocs(q)
             setProducts(querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })))
-        } catch (sortError) {
+        } catch {
             console.warn("Sorting failed (missing index?), fetching unsorted.")
             const unsortedSnapshot = await getDocs(productsRef)
             setProducts(unsortedSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })))

@@ -1,19 +1,8 @@
 import { useState, useEffect, useMemo } from 'react'
-import { db } from '../../firebase.js' // Added .js extension
+import { db } from '../../firebase.js'
 import { collection, getDocs } from 'firebase/firestore'
-import { useCart } from '../../context/CartContext.jsx' // Added .jsx extension
-
-// --- HELPER: DATE LOGIC ---
-const formatDate = (date) => date.toISOString().split('T')[0];
-
-const calculateDays = (start, end) => {
-    if (!start || !end) return 0;
-    const s = new Date(start);
-    const e = new Date(end);
-    const diffTime = Math.abs(e - s);
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
-    return diffDays || 1; 
-}
+import { useCart } from '../../context/CartContext.jsx'
+import { formatLocalDate as formatDate, parseLocalDate, calculateDays } from '../../utils/dateUtils.js'
 
 const Toast = ({ message, onClose }) => {
     useEffect(() => {
@@ -67,7 +56,7 @@ export default function Rentals() {
         setError(null)
       } catch (error) {
         console.error("Error fetching data:", error)
-        if (rentals.length === 0) setError("Failed to load inventory.")
+        setError("Failed to load inventory.")
       } finally {
         setLoading(false)
       }
@@ -106,11 +95,11 @@ export default function Rentals() {
         // If status is 'returned', the item is physically back, regardless of dates.
         if (booking.status === 'returned') return false;
 
-        // 3. Date Overlap Logic
-        const bookingStart = new Date(booking.dateRange?.start);
-        const bookingEnd = new Date(booking.dateRange?.end);
-        const reqStart = new Date(dateRange.start);
-        const reqEnd = new Date(dateRange.end);
+        // 3. Date Overlap Logic (local dates)
+        const bookingStart = parseLocalDate(booking.dateRange?.start);
+        const bookingEnd = parseLocalDate(booking.dateRange?.end);
+        const reqStart = parseLocalDate(dateRange.start);
+        const reqEnd = parseLocalDate(dateRange.end);
 
         return reqStart < bookingEnd && reqEnd > bookingStart;
       }).length;
@@ -152,12 +141,12 @@ export default function Rentals() {
   const handleDateChange = (field, value) => {
       setDateRange(prev => {
           const newState = { ...prev, [field]: value };
-          if (field === 'end' && new Date(value) < new Date(newState.start)) {
+          if (field === 'end' && parseLocalDate(value) < parseLocalDate(newState.start)) {
               alert("Dropoff date cannot be before pickup date.");
               return prev;
           }
-          if (field === 'start' && new Date(value) > new Date(newState.end)) {
-              const newEnd = new Date(value);
+          if (field === 'start' && parseLocalDate(value) > parseLocalDate(newState.end)) {
+              const newEnd = parseLocalDate(value);
               newEnd.setDate(newEnd.getDate() + 1);
               return { start: value, end: formatDate(newEnd) };
           }
